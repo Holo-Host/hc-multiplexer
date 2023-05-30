@@ -7,7 +7,7 @@
     "clean": "rimraf ./build",
     "build": "npm-run-all format lint clean && tsc",
     "start": "node src",
-    "dev": "ADMIN_PORT=$(port) concurrently \"npm run local:watch\" \"npm run start:hc\"",
+    "dev": "hc s clean && ADMIN_PORT=$(port) concurrently \"npm run local:watch\" \"npm run start:hc\"",
     "start:hc": "echo \"starting holochain\" && RUST_LOG=warn echo \"pass\" | hc s -f=$ADMIN_PORT --piped generate /home/eric/code/metacurrency/holochain/emergence/workdir/emergence.happ  --run=3030 -a emergence network mdns",
     "local": "ts-node-esm src/index.ts",
     "local:watch": "nodemon src -e ts,json --exec 'npm run local'",
@@ -50,7 +50,8 @@
     "@holochain/client": "^0.12.2",
     "cookie-parser": "1.4.6",
     "@types/cookie-parser": "1.4.3",
-    "@whi/holo-hash": "0.5.0"
-
+    "@whi/holo-hash": "0.5.0",
+    "blake2b": "2.1.4",
+    "@types/blake2b": "2.1.0"
   }
 }

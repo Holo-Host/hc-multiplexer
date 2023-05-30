@@ -22,3 +22,5 @@ gen
 dist
 build
 node_modules
+
+.hc
