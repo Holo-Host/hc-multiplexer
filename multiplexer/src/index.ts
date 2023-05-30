@@ -22,6 +22,12 @@ const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH|| ""
 
+const INSTANCES = (process.env.Instances || `localhost:${PORT}`).split(/,/)
+
+const instanceForRegKey = (regkey:string):number => {
+  return Buffer.from(regkey)[0] % INSTANCES.length
+}
+
 const myExec = (cmd:string) => {
   console.log("Executing", cmd)
   let output = execSync(cmd).toString()
@@ -155,11 +161,18 @@ const setCredsForPass = async (doGrant: boolean, regkey: string, res: Response, 
 }
 
 app.post("/regkey/:key", async (req: Request, res: Response) => {
+  const regkey = req.params.key
+
+  const target = INSTANCES[instanceForRegKey(regkey)]
+  if (req.headers.host != target) {
+    res.redirect(target)
+    return
+  }
+
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
   
   const apps = await adminWebsocket.listApps({});
-  const regkey = req.params.key
   const installed_app_id = `emergence-${regkey}`
   const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
   if (!appInfo) {
@@ -194,7 +207,13 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
   }
 });
 
-const handleReg = (key:string, res:Response) => {
+const handleReg = (key:string, req: Request, res:Response) => {
+  const target = INSTANCES[instanceForRegKey(key)]
+  if (req.headers.host != target) {
+    res.redirect(target)
+    return
+  }
+
   res.send(`Please enter a password for ${key}
   <form action="/regkey/${key}" method="post">
     Password <input type="password" name="password"></input>
@@ -205,11 +224,11 @@ const handleReg = (key:string, res:Response) => {
 }
 
 app.post("/regkey", (req: Request, res: Response): void => {
-  handleReg(req.body.key, res)
+  handleReg(req.body.key, req, res)
 });
 
 app.get("/regkey/:key", (req: Request, res: Response): void => {
-  handleReg(req.params.key, res)
+  handleReg(req.params.key, req, res)
 });
 
 // const happ = function (_req: Request, res: Response) {
@@ -217,10 +236,19 @@ app.get("/regkey/:key", (req: Request, res: Response): void => {
 // }
 
 app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
+  
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
   const cellIds = await adminWebsocket.listCellIds()
+
   if (req.cookies["creds"]) {
+    const creds = JSON.parse(req.cookies["creds"])
+    const target = INSTANCES[instanceForRegKey(creds.regkey)]
+    if (req.headers.host != target) {
+      res.redirect(target)
+      return
+    }
+
     res.redirect("/index.html")
   } else {
     res.send(`<H1>Go get your reg packet and scan the QR code!</h1>
