@@ -1,24 +1,26 @@
-import express, { Application, Request, Response } from "express";
+import express, { Application, Request, Response, NextFunction } from "express";
 import {
   AdminWebsocket,
-  encodeHashToBase64,
-  getSigningCredentials,
-  AgentPubKey,
+  AgentPubKey, GrantedFunctionsType, CellId, CapSecret, GrantedFunctions
 } from "@holochain/client";
 // import { HoloHash } from '@whi/holo-hash';
 import blake2b  from 'blake2b'
+//import * as ed25519 from "@noble/ed25519";
+import nacl from "tweetnacl";
 
 import {execSync} from "child_process"
-
+import 'dotenv/config'
+// @ts-ignore
+globalThis.crypto = await import("node:crypto")
 
 import cookieParser from "cookie-parser"
 const app: Application = express();
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PORT = process.env.ADMIN_PORT || 3001;
-
-const HAPP_PATH = process.env.HAPP_PATH || "/home/eric/code/metacurrency/holochain/emergence/workdir/emergence.happ"
-const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH ||"/home/eric/code/metacurrency/holochain/emergence/.cargo/bin/lair-keystore-cli"
+const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
+const HAPP_PATH = process.env.HAPP_PATH|| ""
+const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH|| ""
 
 const myExec = (cmd:string) => {
   console.log("Executing", cmd)
@@ -36,25 +38,38 @@ const getLairSocket = () => {
 const uint8ToBase64 = (arr:Uint8Array) => Buffer.from(arr).toString('base64');
 const base64ToUint8 = (b64:string)=> Uint8Array.from(Buffer.from(b64, 'base64'));
 
+const deriveKeys = async (seed: string): Promise<
+  [nacl.SignKeyPair, AgentPubKey]
+> => {
+  //const interim = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+//  const privateKey = await blake2b(interim.length).update(Buffer.from(seed)).digest('binary')
+//  const publicKey = await ed25519.getPublicKeyAsync(privateKey);
+//  const keyPair = { privateKey, publicKey };
 
-const credsToJson = (creds:any) => JSON.stringify({
-  capSecret:uint8ToBase64(creds.capSecret),
-  keyPair:{
-    publicKey: uint8ToBase64(creds.keyPair.publicKey),
-    secretKey: uint8ToBase64(creds.keyPair.secretKey),
-  },
-  signingKey: uint8ToBase64(creds.signingKey)
-});
-const jsonToCreds = (json:string)=> {
-  const creds = JSON.parse(json)
-  return {
-  capSecret:base64ToUint8(creds.capSecret),
-  keyPair:{
-    publicKey: base64ToUint8(creds.keyPair.publicKey),
-    secretKey: base64ToUint8(creds.keyPair.secretKey),
-  },
-  signingKey: base64ToUint8(creds.signingKey)
-}};
+  const interim = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+  const seedBytes = await blake2b(interim.length).update(Buffer.from(seed)).digest('binary')
+
+  const keyPair = nacl.sign.keyPair.fromSeed(seedBytes)
+
+  const signingKey = new Uint8Array(
+    [132, 32, 36].concat(...keyPair.publicKey).concat(...[0, 0, 0, 0])
+  );
+  return [keyPair, signingKey];
+};
+
+const credsToJson = (creds:any, installed_app_id: string, regkey: string) => JSON.stringify(
+  {installed_app_id,
+  regkey,
+   creds: {
+      capSecret:uint8ToBase64(creds.capSecret),
+      keyPair:{
+        publicKey: uint8ToBase64(creds.keyPair.publicKey),
+        secretKey: uint8ToBase64(creds.keyPair.secretKey),
+      },
+      signingKey: uint8ToBase64(creds.signingKey)
+    }
+  }
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -96,15 +111,59 @@ const makeKey = async (adminWebsocket: AdminWebsocket, seedStr: string) => {
     return undefined
   }
 };
+const grantUIPassword = async (
+  adminWebSocket: AdminWebsocket,
+  cellId: CellId,
+  capSecret: Uint8Array,
+  functions: GrantedFunctions,
+  signingKey: AgentPubKey
+): Promise<void> => {
+  await adminWebSocket.grantZomeCallCapability({
+    cell_id: cellId,
+    cap_grant: {
+      tag: "zome-call-signing-key",
+      functions,
+      access: {
+        Assigned: {
+          secret: capSecret,
+          assignees: [signingKey],
+        },
+      },
+    },
+  });
+};
+
+
+const setCredsForPass = async (doGrant: boolean, regkey: string, res: Response, adminWebsocket: AdminWebsocket, cell_id: CellId, installed_app_id: string, password: string) => {
+  const [keyPair, signingKey] = await deriveKeys(password)
+  const capSecret = new Uint8Array(64);
+  capSecret[0] = 1
+  if (doGrant) {
+    await grantUIPassword(adminWebsocket,cell_id, capSecret, { [GrantedFunctionsType.All]: null }, signingKey)
+  }
+
+  const creds = {
+    capSecret,
+    keyPair,
+    signingKey
+  }
+
+  const credsJSON = credsToJson(creds, installed_app_id, regkey)
+  res.cookie('creds', credsJSON); 
+  res.redirect('/');
+
+}
 
 app.post("/regkey/:key", async (req: Request, res: Response) => {
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
   
   const apps = await adminWebsocket.listApps({});
-  const installed_app_id = `emergence-${req.params.key}`
-  if (!apps.find((info)=> info.installed_app_id == installed_app_id)) {
-    const agent_key = await makeKey(adminWebsocket,`${req.body.password}-${req.params.key}`);
+  const regkey = req.params.key
+  const installed_app_id = `emergence-${regkey}`
+  const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
+  if (!appInfo) {
+    const agent_key = await makeKey(adminWebsocket,`${req.body.password}-${regkey}`);
     if (agent_key) {
       try {
         const appInfo = await adminWebsocket.installApp({
@@ -118,46 +177,69 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
         console.log("installing", req.params.key, appInfo);
         // @ts-ignore
         const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"]
-        await adminWebsocket.authorizeSigningCredentials(cell_id)
-        const creds = getSigningCredentials(cell_id)
-        const credsJSON = credsToJson(creds)
-        res.send(`INSTALLED ${credsJSON}`);
 
+        setCredsForPass(true, regkey, res, adminWebsocket, cell_id, installed_app_id, req.body.password)
 
       } catch (e) {
-        res.send(`error installing app ${JSON.stringify(e)}`);
+        throw(e)
+//        res.send(`error installing app ${JSON.stringify(e)}`);
       }
     } else {
       res.send(`error creating agent_key`);
     }
   } else {
-    res.send(`already installed`);
+    //@ts-ignore
+    const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"]
+    setCredsForPass(false, regkey, res, adminWebsocket, cell_id, installed_app_id, req.body.password)
   }
 });
 
-app.get("/regkey/:key", (req: Request, res: Response): void => {
-  res.send(`Your key ${req.params.key}
-  <form action="/regkey/${req.params.key}" method="post">
+const handleReg = (key:string, res:Response) => {
+  res.send(`Please enter a password for ${key}
+  <form action="/regkey/${key}" method="post">
     Password <input type="password" name="password"></input>
     <input type="submit" name="submit"></input>
   </form>
   `);
+
+}
+
+app.post("/regkey", (req: Request, res: Response): void => {
+  handleReg(req.body.key, res)
 });
 
+app.get("/regkey/:key", (req: Request, res: Response): void => {
+  handleReg(req.params.key, res)
+});
 
-app.get("/", async (_req: Request, res: Response) => {
+// const happ = function (_req: Request, res: Response) {
+//   res.sendFile(path.join(__dirname, '/index.html'));
+// }
+
+app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
   const cellIds = await adminWebsocket.listCellIds()
-  res.cookie('name', 'express'); //Sets name = express
+  if (req.cookies["creds"]) {
+    res.redirect("/index.html")
+  } else {
+    res.send(`<H1>Go get your reg packet and scan the QR code!</h1>
+    or type it manually:
+    <form action="/regkey/" method="post">
+    Reg Key <input type="input" name="key"></input>
+    <input type="submit" name="submit"></input>
+  </form>
 
-  const agent = await makeKey(adminWebsocket,"fishy")
-  console.log("agentB64", agent ? encodeHashToBase64(agent) : "couldn't make key")
+    `);
+  }
+}]);
+ 
+app.use('/', express.static(HAPP_UI_PATH)); 
 
-  res.send("Go get your reg packet and scan the QR code!");
+app.get("/reset", (req: Request, res: Response): void => {
+  res.clearCookie("creds")
+  res.redirect('/');
 });
- console.log("BEFORE")
-
 app.listen(PORT, (): void => {
-  console.log("SERVER IS UP ON PORT:", PORT);
+  console.log("SERVER IS UP ON PORT:", PORT); 
 });
