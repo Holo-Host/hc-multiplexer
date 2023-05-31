@@ -22,7 +22,8 @@ const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH|| ""
 
-const INSTANCES = (process.env.Instances || `localhost:${PORT}`).split(/,/)
+const INSTANCES = (process.env.INSTANCES || `localhost:${PORT}`).split(/,/)
+const APP_WS_URL = (process.env.APP_WS_URL || `ws://localhost:${3030}`).split(/,/)
 
 const instanceForRegKey = (regkey:string):number => {
   return Buffer.from(regkey)[0] % INSTANCES.length
@@ -63,19 +64,21 @@ const deriveKeys = async (seed: string): Promise<
   return [keyPair, signingKey];
 };
 
-const credsToJson = (creds:any, installed_app_id: string, regkey: string) => JSON.stringify(
-  {installed_app_id,
-  regkey,
-   creds: {
-      capSecret:uint8ToBase64(creds.capSecret),
-      keyPair:{
-        publicKey: uint8ToBase64(creds.keyPair.publicKey),
-        secretKey: uint8ToBase64(creds.keyPair.secretKey),
-      },
-      signingKey: uint8ToBase64(creds.signingKey)
-    }
-  }
-);
+const credsToJson = (creds:any, installed_app_id: string, regkey: string) => {
+  return JSON.stringify(
+    {installed_app_id,
+    regkey,
+    appWebsocketUrl: APP_WS_URL[instanceForRegKey(regkey)],
+    creds: {
+        capSecret:uint8ToBase64(creds.capSecret),
+        keyPair:{
+          publicKey: uint8ToBase64(creds.keyPair.publicKey),
+          secretKey: uint8ToBase64(creds.keyPair.secretKey),
+        },
+        signingKey: uint8ToBase64(creds.signingKey)
+      }
+    })
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -160,6 +163,10 @@ const setCredsForPass = async (doGrant: boolean, regkey: string, res: Response, 
 
 }
 
+const installedAppId = (regKey: string) => {
+  return `emergence-${regKey}`
+}
+
 app.post("/regkey/:key", async (req: Request, res: Response) => {
   const regkey = req.params.key
 
@@ -173,8 +180,9 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
   const adminWebsocket = await AdminWebsocket.connect(url);
   
   const apps = await adminWebsocket.listApps({});
-  const installed_app_id = `emergence-${regkey}`
+  const installed_app_id = installedAppId(regkey)
   const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
+
   if (!appInfo) {
     const agent_key = await makeKey(adminWebsocket,`${req.body.password}-${regkey}`);
     if (agent_key) {
@@ -207,29 +215,63 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
   }
 });
 
-const handleReg = (key:string, req: Request, res:Response) => {
-  const target = INSTANCES[instanceForRegKey(key)]
+const handleReg = async (regkey:string, req: Request, res:Response) => {
+  const target = INSTANCES[instanceForRegKey(regkey)]
   if (req.headers.host != target) {
     res.redirect(target)
     return
   }
 
-  doSend(res,`
-  Please enter a password for ${key}
-  <form action="/regkey/${key}" method="post">
-    Password <input type="password" name="password"></input>
-    <input type="submit" name="submit"></input>
-  </form>
-  `);
+  const url = `ws://127.0.0.1:${ADMIN_PORT}`
+  const adminWebsocket = await AdminWebsocket.connect(url);
+  const apps = await adminWebsocket.listApps({});
+  const installed_app_id = installedAppId(regkey)
+  const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
+  if (appInfo) {
+    doSend(res,`
+Please enter a password to login as ${regkey}
+<form action="/regkey/${regkey}" method="post">
+  Password <input type="password" name="password"></input>
+  <input type="submit" name="submit"></input>
+</form>
+`);
+  }
+  else {
+    doSend(res,`
+<div>Please enter a password to create an agent for ${regkey}</div>
+<div><b>Make sure your write down this password as it cannot be changed!</b></div>
+<form action="/regkey/${regkey}" method="post">
+<div style="display:flex; flex-direction:column;">
+<div>Password: <input id="pass1" type="password" name="password"></input></div>
+<div>Confirm: <input id="pass2" type="password" name="password2"></input></div>
+<div><input id="submit" type="submit" name="submit""></input></div>
+</div>
+</form>
+<script>
+function checkpass(e) {
+  const pass1 = document.getElementById("pass1").value
+  const pass2 = document.getElementById("pass2").value
+  if (pass1 != pass2) {
+    alert("passwords don't match!")
+    e.preventDefault()
+  }
+  console.log("FISH", pass1, pass2)
+}
+const submitButton = document.getElementById("submit")
+submitButton.addEventListener("click",checkpass)
+</script>
+`);
+
+  }
 
 }
 
-app.post("/regkey", (req: Request, res: Response): void => {
-  handleReg(req.body.key, req, res)
+app.post("/regkey", async (req: Request, res: Response) => {
+  await handleReg(req.body.key, req, res)
 });
 
-app.get("/regkey/:key", (req: Request, res: Response): void => {
-  handleReg(req.params.key, req, res)
+app.get("/regkey/:key", async (req: Request, res: Response) => {
+  await handleReg(req.params.key, req, res)
 });
 
 // const happ = function (_req: Request, res: Response) {
