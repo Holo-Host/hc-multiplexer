@@ -198,7 +198,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
 //        res.send(`error installing app ${JSON.stringify(e)}`);
       }
     } else {
-      res.send(`error creating agent_key`);
+      doSend(res,`<h2>error creating agent_key</h2>`);
     }
   } else {
     //@ts-ignore
@@ -214,7 +214,8 @@ const handleReg = (key:string, req: Request, res:Response) => {
     return
   }
 
-  res.send(`Please enter a password for ${key}
+  doSend(res,`
+  Please enter a password for ${key}
   <form action="/regkey/${key}" method="post">
     Password <input type="password" name="password"></input>
     <input type="submit" name="submit"></input>
@@ -251,8 +252,12 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
 
     res.redirect("/index.html")
   } else {
-    res.send(`<H1>Go get your reg packet and scan the QR code!</h1>
-    or type it manually:
+    doSend(res,`
+
+  <h2>Welcome to Emergence, a Holochain App for Dweb</h2>
+  <div>To create an agent please find Emergence Registration Key in your conference registration packet
+  and either scan the QR code, or type it in below:
+  </div>
     <form action="/regkey/" method="post">
     Reg Key <input type="input" name="key"></input>
     <input type="submit" name="submit"></input>
@@ -261,6 +266,36 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
     `);
   }
 }]);
+
+const doSend = (res:Response, body:string) => {
+  const page = `
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+  
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Emergence Agent Setup</title>
+      <style>
+      html, body {
+        font-family: "Roboto", sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #333;
+        padding: 0px;
+        padding-bottom: 76px; /* Adjust this value based on the height of your bottom navigation */
+        height: 100%; overflow: hidden; /* In general, it's a good idea to have the body take up the full viewport height and have a fixed layout with no scrollbar. Then, you can have a scrollable inner container like .pane-content to handle the overflow of the content. This approach helps keep the page structure clean and allows you to control the scrolling behavior more effectively. */
+      }
+      </style>
+    </head>
+    <body>
+      <h1>Emergence: Mobile Access</h2>
+      ${body}
+    </body>
+  </html>
+  `
+  res.send(page)
+}
  
 app.use('/', express.static(HAPP_UI_PATH)); 
 

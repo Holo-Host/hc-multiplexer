@@ -8,7 +8,7 @@
     "build": "npm-run-all format lint clean && tsc",
     "start": "node src",
     "dev": "hc s clean && ADMIN_PORT=$(port) VITE_APP_PORT=$(port) concurrently \"npm run local:watch\" \"npm run start:hc\"",
-    "start:hc": "echo \"starting holochain\" && RUST_LOG=warn echo \"pass\" | hc s -f=$ADMIN_PORT --piped generate /home/eric/code/metacurrency/holochain/emergence/workdir/emergence.happ  --run=3030 -a emergence network mdns",
+    "start:hc": "echo \"starting holochain\" && RUST_LOG=warn echo \"pass\" | hc s -f=$ADMIN_PORT --piped generate $(sed -n 's/HAPP_PATH=\"\\(.*\\)\"/\\1/p' .env) --run=3030 -a emergence network mdns",
     "local": "ts-node-esm src/index.ts",
     "local:watch": "nodemon src -e ts,json --exec 'npm run local'",
     "lint": "eslint src",
