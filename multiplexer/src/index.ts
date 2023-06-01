@@ -1,7 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import {
   AdminWebsocket,
-  AgentPubKey, GrantedFunctionsType, CellId, CapSecret, GrantedFunctions
+  AgentPubKey, GrantedFunctionsType, CellId, GrantedFunctions
 } from "@holochain/client";
 // import { HoloHash } from '@whi/holo-hash';
 import blake2b  from 'blake2b'
@@ -22,11 +22,12 @@ const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH|| ""
 
-const INSTANCES = (process.env.INSTANCES || `localhost:${PORT}`).split(/,/)
-const APP_WS_URL = (process.env.APP_WS_URL || `ws://localhost:${3030}`).split(/,/)
+const INSTANCE_COUNT = parseInt(process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1")
+const MY_INSTANCE_NUM = parseInt(process.env.MY_INSTANCE_NUM ? process.env.MY_INSTANCE_NUM : "1")
+const APP_PORT_FOR_CLIENT = process.env.APP_PORT_FOR_CLIENT || '3030'
 
 const instanceForRegKey = (regkey:string):number => {
-  return Buffer.from(regkey)[0] % INSTANCES.length
+  return (Buffer.from(regkey)[0] % INSTANCE_COUNT) +1
 }
 
 const myExec = (cmd:string) => {
@@ -68,7 +69,7 @@ const credsToJson = (creds:any, installed_app_id: string, regkey: string) => {
   return JSON.stringify(
     {installed_app_id,
     regkey,
-    appWebsocketUrl: APP_WS_URL[instanceForRegKey(regkey)],
+    appPort: APP_PORT_FOR_CLIENT,
     creds: {
         capSecret:uint8ToBase64(creds.capSecret),
         keyPair:{
@@ -171,11 +172,9 @@ const installedAppId = (regKey: string) => {
 app.post("/regkey/:key", async (req: Request, res: Response) => {
   const regkey = req.params.key
 
-  // const target = INSTANCES[instanceForRegKey(regkey)]
-  // if (req.headers.host != target) {
-  //   res.redirect(target)
-  //   return
-  // }
+  if (redirecting(regkey, req, res)) {
+    return
+  }
 
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
@@ -217,11 +216,9 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
 });
 
 const handleReg = async (regkey:string, req: Request, res:Response) => {
-  // const target = INSTANCES[instanceForRegKey(regkey)]
-  // if (req.headers.host != target) {
-  //   res.redirect(target)
-  //   return
-  // }
+  if (redirecting(regkey, req, res)) {
+    return
+  }
 
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
@@ -279,6 +276,23 @@ app.get("/regkey/:key", async (req: Request, res: Response) => {
 //   res.sendFile(path.join(__dirname, '/index.html'));
 // }
 
+const redirecting = (regkey: string, req: Request, res: Response): boolean => {
+  const origin = req.headers.origin
+  if (origin) {
+    const hostForRegkey = instanceForRegKey(regkey)
+    const found = origin.match(/(.*)([0-9]+)(\..*\.*)/)
+
+    if (found && parseInt(found[2]) != hostForRegkey) {
+      const target = `${req.headers['x-forwarded-proto']}://${found[1]}${hostForRegkey}${found[3]}`
+      console.log("REDIRECTING TO ", target)
+      res.redirect(target)
+      return true
+    } 
+  }
+  return false
+
+}
+
 app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
@@ -287,12 +301,9 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
 
   if (req.cookies["creds"]) {
     const creds = JSON.parse(req.cookies["creds"])
-    const target = INSTANCES[instanceForRegKey(creds.regkey)]
-    console.log("target", target, req.headers.host)
-    // if (req.headers.host != target) {
-    //   res.redirect(target)
-    //   return
-    // }
+    if (redirecting(creds.regkey, req, res)) {
+      return
+    }
 
     res.redirect("/index.html")
   } else {

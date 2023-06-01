@@ -36,8 +36,8 @@ Add the binary path shown in step 2
 HAPP_UI_PATH="/path/to/your-app/ui/dist"
 HAPP_PATH="/path/to/your-app.happ"
 LAIR_CLI_PATH="/path/to/bin/lair-keystore-cli"
-INSTANCES="ws://localhost:3000"
-APP_WS_URL="ws://localhost:3030"
+INSTANCE_COUNT="1"
+APP_PORT_FOR_CLIENT="3030"
 ```
 
 3. Run:
@@ -51,7 +51,7 @@ To test using the reverse proxy:
 
 1. create a domain name that points to your local IP address (yes this is werid!)
 2. install ngix and copy [this config file](00-reverse-proxy.conf) to `/etc/nginx/conf.d` editing the domain name to match what you have set up.
-3. Edit the `INSTANCES` and `APP_WS_URL` items of the `.env` file to match your domain name and ports.
+3. Edit the `INSTANCE_COUNT` and `APP_PORT_FOR_CLIENT` items of the `.env` file to match your node count and ports.
 
 On a local network this should work without installing any SSL certs.
 
@@ -64,6 +64,6 @@ On a local network this should work without installing any SSL certs.
    - nginx
 2. put the app's `.happ` file and ui someplace on the system.
 3. configure nignx with [this config file](00-reverse-proxy.conf) in `/etc/nginx/conf.d` editing the domain name to match what you have set up.
-4. Create a `.env` file as above but pointing to the live resources
+4. Create a `.env` file as above
 5. ensure that holochain's config accepts app port websocket requests that match your UI (3030 for emergence) and that the nginx reverse proxy support is proxying from that port.
 6. ensure that your server spins up the node server `npm run start`
