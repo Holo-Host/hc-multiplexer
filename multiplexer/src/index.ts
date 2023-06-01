@@ -145,8 +145,9 @@ const grantUIPassword = async (
 
 const setCredsForPass = async (doGrant: boolean, regkey: string, res: Response, adminWebsocket: AdminWebsocket, cell_id: CellId, installed_app_id: string, password: string) => {
   const [keyPair, signingKey] = await deriveKeys(password)
-  const capSecret = new Uint8Array(64);
-  capSecret[0] = 1
+  const interim = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+  const regKeyHash = await blake2b(interim.length).update(Buffer.from(regkey)).digest('binary')
+  const capSecret = Buffer.concat([regKeyHash,regKeyHash]);
   if (doGrant) {
     await grantUIPassword(adminWebsocket,cell_id, capSecret, { [GrantedFunctionsType.All]: null }, signingKey)
   }
@@ -170,11 +171,11 @@ const installedAppId = (regKey: string) => {
 app.post("/regkey/:key", async (req: Request, res: Response) => {
   const regkey = req.params.key
 
-  const target = INSTANCES[instanceForRegKey(regkey)]
-  if (req.headers.host != target) {
-    res.redirect(target)
-    return
-  }
+  // const target = INSTANCES[instanceForRegKey(regkey)]
+  // if (req.headers.host != target) {
+  //   res.redirect(target)
+  //   return
+  // }
 
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
@@ -216,11 +217,11 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
 });
 
 const handleReg = async (regkey:string, req: Request, res:Response) => {
-  const target = INSTANCES[instanceForRegKey(regkey)]
-  if (req.headers.host != target) {
-    res.redirect(target)
-    return
-  }
+  // const target = INSTANCES[instanceForRegKey(regkey)]
+  // if (req.headers.host != target) {
+  //   res.redirect(target)
+  //   return
+  // }
 
   const url = `ws://127.0.0.1:${ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
@@ -287,10 +288,11 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   if (req.cookies["creds"]) {
     const creds = JSON.parse(req.cookies["creds"])
     const target = INSTANCES[instanceForRegKey(creds.regkey)]
-    if (req.headers.host != target) {
-      res.redirect(target)
-      return
-    }
+    console.log("target", target, req.headers.host)
+    // if (req.headers.host != target) {
+    //   res.redirect(target)
+    //   return
+    // }
 
     res.redirect("/index.html")
   } else {
