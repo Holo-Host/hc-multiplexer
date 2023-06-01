@@ -45,7 +45,7 @@ const getLairSocket = () => {
 const uint8ToBase64 = (arr:Uint8Array) => Buffer.from(arr).toString('base64');
 const base64ToUint8 = (b64:string)=> Uint8Array.from(Buffer.from(b64, 'base64'));
 
-const deriveKeys = async (seed: string): Promise<
+const deriveSigningKeys = async (seed: string): Promise<
   [nacl.SignKeyPair, AgentPubKey]
 > => {
   //const interim = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
@@ -144,7 +144,7 @@ const grantUIPassword = async (
 
 
 const setCredsForPass = async (doGrant: boolean, regkey: string, res: Response, adminWebsocket: AdminWebsocket, cell_id: CellId, installed_app_id: string, password: string) => {
-  const [keyPair, signingKey] = await deriveKeys(password)
+  const [keyPair, signingKey] = await deriveSigningKeys(`${regkey}-${password}`)
   const interim = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
   const regKeyHash = await blake2b(interim.length).update(Buffer.from(regkey)).digest('binary')
   const capSecret = Buffer.concat([regKeyHash,regKeyHash]);
