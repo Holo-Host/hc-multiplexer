@@ -201,7 +201,9 @@
           "holochain",
           "empty"
         ],
-        "versions": "versions"
+        "versions": [
+          "versions"
+        ]
       },
       "locked": {
         "lastModified": 1685392562,
@@ -338,7 +340,8 @@
         "nixpkgs": [
           "holochain",
           "nixpkgs"
-        ]
+        ],
+        "versions": "versions"
       }
     },
     "rust-overlay": {
@@ -431,11 +434,11 @@
       },
       "locked": {
         "dir": "versions/0_1",
-        "lastModified": 1685392562,
-        "narHash": "sha256-LyVzqnVPa9bX+Bj3lz1PjowjghAuHEbXqqGMM5gG1+0=",
+        "lastModified": 1685687869,
+        "narHash": "sha256-98fDi4fw66/m27gViayA/OKR5CUEeWh4DIxMbnSH4cw=",
         "owner": "holochain",
         "repo": "holochain",
-        "rev": "aacf793e09ef15f6ad535c2f83202029aa974f20",
+        "rev": "b2d04a7f3d98906961fb3b1b9277b472796b8585",
         "type": "github"
       },
       "original": {
