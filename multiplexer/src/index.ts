@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import express, { Application, Request, Response, NextFunction } from "express";
 import {
   AdminWebsocket,
