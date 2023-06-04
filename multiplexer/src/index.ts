@@ -310,10 +310,9 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
     res.redirect("/index.html")
   } else {
     doSend(res,`
-
-  <h2>Welcome to Emergence, a Holochain App for Dweb</h2>
-  <div>To create an agent please find Emergence Registration Key in your conference registration packet
-  and either scan the QR code, or type it in below:
+  <h3>Welcome to Emergence, a Holochain App for Dweb</h3>
+  <div>To create an agent please find the Emergence Registration Key in your conference registration packet
+  and either scan the QR code, or enter it here:
   </div>
     <form action="/regkey/" method="post">
     Reg Key <input type="input" name="key"></input>
@@ -343,11 +342,20 @@ const doSend = (res:Response, body:string) => {
         padding-bottom: 76px; /* Adjust this value based on the height of your bottom navigation */
         height: 100%; overflow: hidden; /* In general, it's a good idea to have the body take up the full viewport height and have a fixed layout with no scrollbar. Then, you can have a scrollable inner container like .pane-content to handle the overflow of the content. This approach helps keep the page structure clean and allows you to control the scrolling behavior more effectively. */
       }
+      .app-info {
+        display:flex; justify-content:center; align-items:center; flex-direction: column;
+        max-width: 500px;
+        margin:0 auto;
+        text-align: center;
+      }
       </style>
     </head>
     <body>
-      <h1>Emergence: Mobile Access</h2>
+      <div class="app-info">
+      <img width="75" src="/images/emergence-vertical.svg" />
+      <h2> Mobile Access</h2>
       ${body}
+      </div>
     </body>
   </html>
   `
