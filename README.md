@@ -4,7 +4,7 @@ A small webserver that manages creation of agent instances and UI password acces
 
 ## Description
 
-We need a temporary solution for mobile devices to access Holochain.  Thus we create a proxy web service that "multiplexes" connections to a conductor and makes them available over the web, as simplified hosting solution.  The service requests a registration key and password from the user. It checks to see if an instance of the happ with that registration key has been created.  
+We need a temporary solution for browsers on a local-area-network to access Holochain instances.  Thus we create a proxy web service that "multiplexes" connections to a conductor and makes them available over the web, as simplified hosting solution.  The service requests a registration key and password from the user. It checks to see if an instance of the happ with that registration key has been created.  
 
 If the instance doesn't exist it:
 1.  uses the password and key as a seed to create an agent keypair in lair
