@@ -23,18 +23,20 @@ For this system to work, it also requires a reverse proxy setup to make public t
 
 1. Install lair-keystore-cli at branch `lair-keystore-cli` using:
 ```
-cd crate/lair_keystore_cli
+git clone git@github.com:holochain/lair.git
+cd lair/crates/lair_keystore_cli
 cargo install --path .
 which lair-keystore-cli
 ```
-Add the binary path shown in step 2
+Add the binary path shown to LAIR_CLI_PATH in step 3
 
-2. Compile and package your happ and UI files.
+2. Compile and package your happ and UI files (usuall `npm run package`)
 
 3. Create a `multiplexer/.env` file with:
 ```
 HAPP_UI_PATH="/path/to/your-app/ui/dist"
 HAPP_PATH="/path/to/your-app.happ"
+CONDUCTOR_CONFIG_PATH="" #default is get this from the .hc file created by `hc s g`
 LAIR_CLI_PATH="/path/to/bin/lair-keystore-cli"
 INSTANCE_COUNT="1"
 APP_PORT_FOR_CLIENT="3030"

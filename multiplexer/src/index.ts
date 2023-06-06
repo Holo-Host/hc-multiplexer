@@ -16,10 +16,33 @@ import 'dotenv/config'
 globalThis.crypto = await import("node:crypto")
 
 import cookieParser from "cookie-parser"
+import * as fs from 'fs';
+
 const app: Application = express();
 
+const myExec = (cmd:string) => {
+  console.log("Executing", cmd)
+  let output = execSync(cmd).toString()
+  output = output.substring(0, output.length - 1);
+  return output
+}
+
+const configPathFromDotHC = () => {
+  let data = fs.readFileSync('.hc', 'utf8');
+  data = data.substring(0, data.length - 1);
+
+  return `${data}/conductor-config.yaml`
+}
+
+const CONDUCTOR_CONFIG_PATH = process.env.CONDUCTOR_CONFIG_PATH || configPathFromDotHC()
+const CONDUCTOR_CONFIG = fs.readFileSync(CONDUCTOR_CONFIG_PATH, 'utf8');
+const adminPortFromConfig = () => {
+  const result = CONDUCTOR_CONFIG.match(/driver:\W+type: websocket\W+port: ([0-9]+)/m)
+  if (!result) throw("Unable to find admin port in config")
+  return result[1]
+}
 const PORT = process.env.PORT || 3000;
-const ADMIN_PORT = process.env.ADMIN_PORT || 3001;
+const ADMIN_PORT = adminPortFromConfig();
 const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH|| ""
@@ -32,18 +55,14 @@ const instanceForRegKey = (regkey:string):number => {
   return (Buffer.from(regkey)[0] % INSTANCE_COUNT) +1
 }
 
-const myExec = (cmd:string) => {
-  console.log("Executing", cmd)
-  let output = execSync(cmd).toString()
-  output = output.substring(0, output.length - 1);
-  return output
+
+const getLairSocket = () => { 
+  const result = CONDUCTOR_CONFIG.match(/.*connection_url: (.*)/)
+  if (!result) throw("Unable to find connectuion URL")
+  return result[1]
 }
-const getLairSocket = () => {
-  let hc = myExec("cat .hc")
-  const cmd = `sed -n 's/.*connection_url: \\(.*\\)/\\1/p' ${hc}/conductor-config.yaml`
-  let lairSocket = myExec(cmd)
-  return lairSocket
-}
+
+
 
 const uint8ToBase64 = (arr:Uint8Array) => Buffer.from(arr).toString('base64');
 const base64ToUint8 = (b64:string)=> Uint8Array.from(Buffer.from(b64, 'base64'));
@@ -255,7 +274,6 @@ function checkpass(e) {
     alert("passwords don't match!")
     e.preventDefault()
   }
-  console.log("FISH", pass1, pass2)
 }
 const submitButton = document.getElementById("submit")
 submitButton.addEventListener("click",checkpass)
