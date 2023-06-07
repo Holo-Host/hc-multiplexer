@@ -23,8 +23,10 @@ For this system to work, it also requires a reverse proxy setup to make public t
 
 1. Install lair-keystore-cli at branch `lair-keystore-cli` using:
 ```
-git clone git@github.com:holochain/lair.git
-cd lair/crates/lair_keystore_cli
+git clone https://github.com/holochain/lair.git
+cd lair
+git checkout lair-keystore-cli
+cd crates/lair_keystore_cli
 cargo install --path .
 which lair-keystore-cli
 ```
