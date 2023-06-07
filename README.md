@@ -72,3 +72,10 @@ On a local network this should work without installing any SSL certs.
 4. Create a `.env` file as above
 5. ensure that holochain's config accepts app port websocket requests that match your UI (3030 for emergence) and that the nginx reverse proxy support is proxying from that port.
 6. ensure that your server spins up the node server `npm run start`
+
+
+## License
+
+Copyright (C) 2023, Holochain Foundation, All rights reserved.
+
+This software may not be used without a commercial license from the Holochain Foundation.
