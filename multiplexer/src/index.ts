@@ -47,6 +47,7 @@ const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
 const WEBHAPP_PATH = process.env.WEBHAPP_PATH|| ""
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH|| ""
+const NETWORK_SEED = process.env.NETWORK_SEED|| ""
 
 const INSTANCE_COUNT = parseInt(process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1")
 const MY_INSTANCE_NUM = parseInt(process.env.MY_INSTANCE_NUM ? process.env.MY_INSTANCE_NUM : "1")
@@ -214,6 +215,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
           path: HAPP_PATH,
           installed_app_id,
           membrane_proofs: {},
+          network_seed: NETWORK_SEED,
         });
         await adminWebsocket.enableApp({ installed_app_id });
 

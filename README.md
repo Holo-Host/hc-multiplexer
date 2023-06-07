@@ -43,6 +43,7 @@ CONDUCTOR_CONFIG_PATH="" #default is get this from the .hc file created by `hc s
 LAIR_CLI_PATH="/path/to/bin/lair-keystore-cli"
 INSTANCE_COUNT="1"
 APP_PORT_FOR_CLIENT="3030"
+NETWORK_SEED="some-unique-value"
 ```
 
 3. Run:
