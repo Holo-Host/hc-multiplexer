@@ -38,6 +38,7 @@ Add the binary path shown to LAIR_CLI_PATH in step 3
 ```
 HAPP_UI_PATH="/path/to/your-app/ui/dist"
 HAPP_PATH="/path/to/your-app.happ"
+WEBHAPP_PATH="/path/to/your-app.webhapp"
 CONDUCTOR_CONFIG_PATH="" #default is get this from the .hc file created by `hc s g`
 LAIR_CLI_PATH="/path/to/bin/lair-keystore-cli"
 INSTANCE_COUNT="1"

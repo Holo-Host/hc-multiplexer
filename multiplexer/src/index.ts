@@ -45,6 +45,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PORT = adminPortFromConfig();
 const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
+const WEBHAPP_PATH = process.env.WEBHAPP_PATH|| ""
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH|| ""
 
 const INSTANCE_COUNT = parseInt(process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1")
@@ -246,17 +247,18 @@ const handleReg = async (regkey:string, req: Request, res:Response) => {
   const apps = await adminWebsocket.listApps({});
   const installed_app_id = installedAppId(regkey)
   const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
+  let body
   if (appInfo) {
-    doSend(res,`
+    body = `
 Please enter a password to login as ${regkey}
 <form action="/regkey/${regkey}" method="post">
   Password <input type="password" name="password"></input>
   <input type="submit" name="submit"></input>
 </form>
-`);
+`;
   }
   else {
-    doSend(res,`
+    body = `
 <div>Please enter a password to create an agent for ${regkey}</div>
 <div><b>Make sure your write down this password as it cannot be changed!</b></div>
 <form action="/regkey/${regkey}" method="post">
@@ -278,10 +280,10 @@ function checkpass(e) {
 const submitButton = document.getElementById("submit")
 submitButton.addEventListener("click",checkpass)
 </script>
-`);
-
+`;
   }
 
+  doSend(res,body)
 }
 
 app.post("/regkey", async (req: Request, res: Response) => {
@@ -312,6 +314,28 @@ const redirecting = (regkey: string, req: Request, res: Response): boolean => {
   return false
 
 }
+app.get('/emergence.webhapp', async (req: Request, res: Response) => {
+  res.sendFile(WEBHAPP_PATH)
+}); 
+app.get("/install", async (req: Request, res: Response) => {
+  doSend(res,`
+<h3>Launcher Install Instructions:</h3>
+<ol style="text-align: left">
+<li>
+Download the the <a href="https://drive.switch.ch/index.php/s/eRCdJxAuSWW2YPp">Launcher for your platfrom</a>
+</li>
+<li>
+Download the <a href="emergence.webhapp">Emergence webhapp file</a>
+</li>
+<li>
+Open the launcher and click on "App Store," then "Select app from Filesystem" and choose the file you downloaded from step 2.
+</li>
+<li>
+Enjoy!
+</li>
+</ol>
+`)
+});
 
 app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   
@@ -329,14 +353,16 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   } else {
     doSend(res,`
   <h3>Welcome to Emergence, a Holochain App for Dweb</h3>
-  <div>To create an agent please find the Emergence Registration Key in your conference registration packet
+  <div>To create an agent or log-in, please use the Emergence Registration Key from your conference registration packet
   and either scan the QR code, or enter it here:
   </div>
     <form action="/regkey/" method="post">
     Reg Key <input type="input" name="key"></input>
     <input type="submit" name="submit"></input>
   </form>
-
+  <p style="margin-top:20px; color:gray; font-size:14px">
+    If you want to install the holochain-native emergence hApp on your computer instead, please follow <a href="/install"> these instructions.</a>
+  </p>
     `);
   }
 }]);
@@ -353,7 +379,7 @@ const doSend = (res:Response, body:string) => {
       <style>
       html, body {
         font-family: "Roboto", sans-serif;
-        font-size: 16px;
+        font-size: 18px;
         line-height: 1.5;
         color: #333;
         padding: 0px;
@@ -370,8 +396,8 @@ const doSend = (res:Response, body:string) => {
     </head>
     <body>
       <div class="app-info">
-      <img width="75" src="/images/emergence-vertical.svg" />
-      <h2> Mobile Access</h2>
+      <a href="/"><img width="75" src="/images/emergence-vertical.svg" /></a>
+      <h2> Web Access</h2>
       ${body}
       </div>
     </body>
