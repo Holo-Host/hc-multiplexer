@@ -41,7 +41,7 @@ const adminPortFromConfig = () => {
   if (!result) throw("Unable to find admin port in config")
   return result[1]
 }
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const ADMIN_PORT = adminPortFromConfig();
 const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
@@ -412,6 +412,6 @@ app.get("/reset", (req: Request, res: Response): void => {
   res.clearCookie("creds")
   res.redirect('/');
 });
-app.listen(PORT, (): void => {
+app.listen(PORT, "0.0.0.0", (): void => {
   console.log("SERVER IS UP ON PORT:", PORT); 
 });
