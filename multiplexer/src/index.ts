@@ -42,7 +42,7 @@ const adminPortFromConfig = () => {
   return result[1]
 }
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-const ADMIN_PORT = adminPortFromConfig();
+const HC_ADMIN_PORT = process.env.HC_ADMIN_PORT || adminPortFromConfig();
 const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./"
 const HAPP_PATH = process.env.HAPP_PATH|| ""
 const WEBHAPP_PATH = process.env.WEBHAPP_PATH|| ""
@@ -198,7 +198,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
     return
   }
 
-  const url = `ws://127.0.0.1:${ADMIN_PORT}`
+  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
   
   const apps = await adminWebsocket.listApps({});
@@ -242,7 +242,7 @@ const handleReg = async (regkey:string, req: Request, res:Response) => {
     return
   }
 
-  const url = `ws://127.0.0.1:${ADMIN_PORT}`
+  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
   const apps = await adminWebsocket.listApps({});
   const installed_app_id = installedAppId(regkey)
@@ -339,7 +339,7 @@ Enjoy!
 
 app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   
-  const url = `ws://127.0.0.1:${ADMIN_PORT}`
+  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
   const adminWebsocket = await AdminWebsocket.connect(url);
   const cellIds = await adminWebsocket.listCellIds()
 
