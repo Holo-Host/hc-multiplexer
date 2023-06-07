@@ -320,6 +320,11 @@ app.get('/emergence.webhapp', async (req: Request, res: Response) => {
   res.sendFile(WEBHAPP_PATH)
 }); 
 app.get("/install", async (req: Request, res: Response) => {
+  const network_seed = NETWORK_SEED ? `
+  <li>
+  IMPORTANT: add "${NETWORK_SEED}" as the network seed!
+  </li>  
+  ` : ``
   doSend(res,`
 <h3>Launcher Install Instructions:</h3>
 <ol style="text-align: left">
@@ -332,6 +337,7 @@ Download the <a href="emergence.webhapp">Emergence webhapp file</a>
 <li>
 Open the launcher and click on "App Store," then "Select app from Filesystem" and choose the file you downloaded from step 2.
 </li>
+${network_seed}
 <li>
 Enjoy!
 </li>
