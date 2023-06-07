@@ -32,7 +32,7 @@ which lair-keystore-cli
 ```
 Add the binary path shown to LAIR_CLI_PATH in step 3
 
-2. Compile and package your happ and UI files (usuall `npm run package`)
+2. Compile and package your happ and UI files (usually `npm run package`)
 
 3. Create a `multiplexer/.env` file with:
 ```
