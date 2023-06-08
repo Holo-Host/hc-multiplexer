@@ -20,6 +20,14 @@ import * as fs from 'fs';
 
 const app: Application = express();
 
+
+// Here we assign our handler to the corresponding global, window property
+process.on('unhandledRejection', error => {
+  // Prints "unhandledRejection woops!"
+  console.log('unhandledRejection:', error);
+});
+// production error handler
+
 const myExec = (cmd:string) => {
   console.log("Executing", cmd)
   let output = execSync(cmd).toString()
@@ -211,17 +219,18 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
     return
   }
 
-  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
-  const adminWebsocket = await AdminWebsocket.connect(url);
-  
-  const apps = await adminWebsocket.listApps({});
-  const installed_app_id = installedAppId(regkey)
-  const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
+  try {
 
-  if (!appInfo) {
-    const agent_key = await makeKey(adminWebsocket,`${req.body.password}-${regkey}`);
-    if (agent_key) {
-      try {
+    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
+    const adminWebsocket = await AdminWebsocket.connect(url);
+    
+    const apps = await adminWebsocket.listApps({});
+    const installed_app_id = installedAppId(regkey)
+    const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
+
+    if (!appInfo) {
+      const agent_key = await makeKey(adminWebsocket,`${req.body.password}-${regkey}`);
+      if (agent_key) {
         const appInfo = await adminWebsocket.installApp({
           agent_key,
           path: HAPP_PATH,
@@ -235,19 +244,17 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
         // @ts-ignore
         const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"]
 
-        setCredsForPass(true, regkey, res, adminWebsocket, cell_id, installed_app_id, req.body.password)
-
-      } catch (e) {
-        throw(e)
-//        res.send(`error installing app ${JSON.stringify(e)}`);
+        await setCredsForPass(true, regkey, res, adminWebsocket, cell_id, installed_app_id, req.body.password)
+      } else {
+        doSend(res,`<h2>error creating agent_key</h2>`);
       }
     } else {
-      doSend(res,`<h2>error creating agent_key</h2>`);
+      //@ts-ignore
+      const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"]
+      await setCredsForPass(false, regkey, res, adminWebsocket, cell_id, installed_app_id, req.body.password)
     }
-  } else {
-    //@ts-ignore
-    const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"]
-    setCredsForPass(false, regkey, res, adminWebsocket, cell_id, installed_app_id, req.body.password)
+  } catch(e) {
+    doError(res, e)
   }
 });
 
@@ -256,23 +263,24 @@ const handleReg = async (regkey:string, req: Request, res:Response) => {
     return
   }
 
-  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
-  const adminWebsocket = await AdminWebsocket.connect(url);
-  const apps = await adminWebsocket.listApps({});
-  const installed_app_id = installedAppId(regkey)
-  const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
-  let body
-  if (appInfo) {
-    body = `
-Please enter a password to login as ${regkey}
-<form action="/regkey/${regkey}" method="post">
-  Password <input type="password" name="password"></input>
-  <input type="submit" name="submit"></input>
-</form>
-`;
-  }
-  else {
-    body = `
+  try {
+    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
+    const adminWebsocket = await AdminWebsocket.connect(url);
+    const apps = await adminWebsocket.listApps({});
+    const installed_app_id = installedAppId(regkey)
+    const appInfo = apps.find((info)=> info.installed_app_id == installed_app_id)
+    let body
+    if (appInfo) {
+      body = `
+  Please enter a password to login as ${regkey}
+  <form action="/regkey/${regkey}" method="post">
+    Password <input type="password" name="password"></input>
+    <input type="submit" name="submit"></input>
+  </form>
+  `;
+    }
+    else {
+      body = `
 <div>Please enter a password to create an agent for ${regkey}</div>
 <div><b>Make sure your write down this password as it cannot be changed!</b></div>
 <form action="/regkey/${regkey}" method="post">
@@ -294,10 +302,13 @@ function checkpass(e) {
 const submitButton = document.getElementById("submit")
 submitButton.addEventListener("click",checkpass)
 </script>
-`;
+  `;
+    }
+    doSend(res,body)
+  } catch(e) {
+    doError(res, e)
   }
-
-  doSend(res,body)
+ 
 }
 
 app.post("/regkey", async (req: Request, res: Response) => {
@@ -358,11 +369,14 @@ Enjoy!
 });
 
 app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
-  
-  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
-  const adminWebsocket = await AdminWebsocket.connect(url);
-  const cellIds = await adminWebsocket.listCellIds()
-
+  try {
+    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
+    const adminWebsocket = await AdminWebsocket.connect(url);
+    const cellIds = await adminWebsocket.listCellIds()
+  } catch(e) {
+    doError(res, e)
+    return
+  }
   if (req.cookies["creds"]) {
     const creds = JSON.parse(req.cookies["creds"])
     if (redirecting(creds.regkey, req, res)) {
@@ -386,6 +400,15 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
     `);
   }
 }]);
+
+const doError = (res:Response, err: any) => {
+  doSend(res,`
+  <div style="border: solid 1px; border-radius:10px;padding:0 20px 20px 20px;min-width:300px;">
+  <h4>Error!</h4>
+  ${err.message ?  err.message : JSON.stringify(err)}
+  </div>
+  `)
+}
 
 const doSend = (res:Response, body:string) => {
   const page = `
@@ -425,7 +448,14 @@ const doSend = (res:Response, body:string) => {
   `
   res.send(page)
 }
- 
+app.get("/fail" ,async (req: Request, res: Response) => {
+  try {
+    throw("test error")
+  } catch(e) {
+    doError(res,e)
+  }
+});
+
 app.use('/', express.static(HAPP_UI_PATH)); 
 
 app.get("/reset", (req: Request, res: Response): void => {
@@ -435,3 +465,4 @@ app.get("/reset", (req: Request, res: Response): void => {
 app.listen(PORT, "0.0.0.0", (): void => {
   console.log("SERVER IS UP ON PORT:", PORT); 
 });
+
