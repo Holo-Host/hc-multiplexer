@@ -57,8 +57,20 @@ const instanceForRegKey = (regkey:string):number => {
   return (Buffer.from(regkey)[0] % INSTANCE_COUNT) +1
 }
 
+const getLairSocket = () => {
+  // prefer getting the url from lair-keystore directly
+  if (process.env.LAIR_PATH && process.env.LAIR_WORKING_DIRECTORY) {
+    const cmd = `${process.env.LAIR_PATH} --lair-root ${process.env.LAIR_WORKING_DIRECTORY} url`
 
-const getLairSocket = () => { 
+    try {
+      const output = myExec(cmd)
+      return output
+    } catch (e) {
+      console.log("Error when while attempting to read lair-keystore url: ", e)
+    }
+  }
+
+  // fallback to parsing the conductor config
   const result = CONDUCTOR_CONFIG.match(/.*connection_url: (.*)/)
   if (!result) throw("Unable to find connectuion URL")
   return result[1]
