@@ -147,7 +147,7 @@ const makeKey = async (adminWebsocket: AdminWebsocket, seedStr: string) => {
   
   const cmd = `echo "pass" | ${LAIR_CLI_PATH} import-seed-string "${getLairSocket()}" "${seedStr}"`
 
-  try {
+  // try {
     const output = myExec(cmd)
     console.log("RAW", output)
     let b64 = ""
@@ -159,10 +159,10 @@ const makeKey = async (adminWebsocket: AdminWebsocket, seedStr: string) => {
     }
     const pubKey = hash32ToAgentPubKey(Buffer.from(b64, 'base64'))
     return pubKey
-  } catch (e) {
-    console.log("Error when while attempting to add agent: ", e)
-    return undefined
-  }
+  // } catch (e) {
+  //   console.log("Error when while attempting to add agent: ", e)
+  //   return undefined
+  // }
 };
 const grantUIPassword = async (
   adminWebSocket: AdminWebsocket,
@@ -275,8 +275,9 @@ const handleReg = async (regkey:string, req: Request, res:Response) => {
   Please enter a password to login as ${regkey}
   <form action="/regkey/${regkey}" method="post">
     Password <input type="password" name="password"></input>
-    <input type="submit" name="submit"></input>
+    <input type="submit" name="submit" value="Login"/>
   </form>
+  <div style="margin-top:20px; font-size:80%">Not ${regkey}? <a href="/reset">Clear agent session</a> </div>
   `;
     }
     else {
@@ -287,7 +288,7 @@ const handleReg = async (regkey:string, req: Request, res:Response) => {
 <div style="display:flex; flex-direction:column;">
 <div>Password: <input id="pass1" type="password" name="password"></input></div>
 <div>Confirm: <input id="pass2" type="password" name="password2"></input></div>
-<div><input id="submit" type="submit" name="submit""></input></div>
+<div><input id="submit" type="submit" name="submit" value="Create Agent"/></div>
 </div>
 </form>
 <script>
@@ -392,7 +393,7 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   </div>
     <form action="/regkey/" method="post">
     Reg Key <input type="input" name="key"></input>
-    <input type="submit" name="submit"></input>
+    <input type="submit" name="submit" value="Next"></input>
   </form>
   <p style="margin-top:20px; color:gray; font-size:14px">
     If you want to install the holochain-native emergence hApp on your computer instead, please follow <a href="/install"> these instructions.</a>
