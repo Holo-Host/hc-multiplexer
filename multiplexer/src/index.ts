@@ -3,7 +3,7 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import {
   AdminWebsocket,
-  AgentPubKey, GrantedFunctionsType, CellId, GrantedFunctions
+  AgentPubKey, GrantedFunctionsType, CellId, GrantedFunctions, encodeHashToBase64
 } from "@holochain/client";
 // import { HoloHash } from '@whi/holo-hash';
 import blake2b  from 'blake2b'
@@ -368,6 +368,29 @@ Enjoy!
 </ol>
 `)
 });
+
+app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
+    const adminWebsocket = await AdminWebsocket.connect(url);
+    const appsRaw = (await adminWebsocket.listApps({})).sort(((a,b)=> a.installed_app_id.toLocaleLowerCase() < b.installed_app_id.toLocaleLowerCase() ? -1 : 1))
+    const apps =  appsRaw.map(a=>{
+      //@ts-ignore
+      const cellId = a.cell_info["emergence"][0].provisioned.cell_id
+      //@ts-ignore
+      return `<pre>id: ${a.installed_app_id}
+  DNA: ${encodeHashToBase64(cellId[0])}
+Agent: ${encodeHashToBase64(cellId[1])}`
+})
+    const body = `
+    <div style="text-align:left">${apps.join("<br>")}</div>
+`
+    doSend(res, body )
+  } catch(e) {
+    doError(res, e)
+    return
+  }})
+
 
 app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
   try {
