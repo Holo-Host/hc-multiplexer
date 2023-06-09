@@ -253,6 +253,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
       const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"]
       await setCredsForPass(false, regkey, res, adminWebsocket, cell_id, installed_app_id, req.body.password)
     }
+    adminWebsocket.client.close()
   } catch(e) {
     doError(res, e)
   }
@@ -306,6 +307,8 @@ submitButton.addEventListener("click",checkpass)
   `;
     }
     doSend(res,body)
+    adminWebsocket.client.close()
+
   } catch(e) {
     doError(res, e)
   }
@@ -386,6 +389,8 @@ Agent: ${encodeHashToBase64(cellId[1])}`
     <div style="text-align:left">${apps.join("<br>")}</div>
 `
     doSend(res, body )
+    adminWebsocket.client.close()
+
   } catch(e) {
     doError(res, e)
     return
@@ -397,6 +402,7 @@ app.get("/", [async (req: Request, res: Response, next: NextFunction) => {
     const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
     const adminWebsocket = await AdminWebsocket.connect(url);
     const cellIds = await adminWebsocket.listCellIds()
+    adminWebsocket.client.close()
   } catch(e) {
     doError(res, e)
     return
