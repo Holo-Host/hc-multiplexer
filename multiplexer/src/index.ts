@@ -60,6 +60,7 @@ const NETWORK_SEED = process.env.NETWORK_SEED|| ""
 const INSTANCE_COUNT = parseInt(process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1")
 const MY_INSTANCE_NUM = parseInt(process.env.MY_INSTANCE_NUM ? process.env.MY_INSTANCE_NUM : "1")
 const APP_PORT_FOR_CLIENT = process.env.APP_PORT_FOR_CLIENT || '3030'
+const APP_PORT_FOR_INTERFACE: number = parseInt(process.env.APP_PORT_FOR_INTERFACE || '3030')
 
 const instanceForRegKey = (regkey:string):number => {
   return (Buffer.from(regkey)[0] % INSTANCE_COUNT) +1
@@ -485,6 +486,18 @@ app.get("/fail" ,async (req: Request, res: Response) => {
     doError(res,e)
   }
 });
+
+try {
+  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
+  const adminWebsocket = await AdminWebsocket.connect(url);
+  console.log(`Starting app interface on port ${APP_PORT_FOR_INTERFACE}`);
+  await adminWebsocket.attachAppInterface({ port: APP_PORT_FOR_INTERFACE });
+  adminWebsocket.client.close()
+} catch (e) {
+  console.log(`Error attaching app interface: ${e}.`)
+}
+
+
 
 app.use('/', express.static(HAPP_UI_PATH)); 
 
