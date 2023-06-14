@@ -202,13 +202,9 @@ const grantUIPassword = async (
   });
 };
 
-const setCredsForPass = async (
-  doGrant: boolean,
+
+const genCredsForPass = async (
   regkey: string,
-  res: Response,
-  adminWebsocket: AdminWebsocket,
-  cell_id: CellId,
-  installed_app_id: string,
   password: string
 ) => {
   const [keyPair, signingKey] = await deriveSigningKeys(
@@ -222,21 +218,23 @@ const setCredsForPass = async (
     .update(Buffer.from(regkey))
     .digest("binary");
   const capSecret = Buffer.concat([regKeyHash, regKeyHash]);
-  if (doGrant) {
-    await grantUIPassword(
-      adminWebsocket,
-      cell_id,
-      capSecret,
-      { [GrantedFunctionsType.All]: null },
-      signingKey
-    );
-  }
-
   const creds = {
     capSecret,
     keyPair,
     signingKey,
   };
+  return creds
+}
+
+
+
+const setCredsForPass = async (
+  regkey: string,
+  password: string,
+  installed_app_id: string,
+  res: Response,
+) => {
+  const creds = await genCredsForPass(regkey, password)
 
   const credsJSON = credsToJson(creds, installed_app_id, regkey);
   res.cookie("creds", credsJSON);
@@ -247,9 +245,42 @@ const installedAppId = (regKey: string) => {
   return `emergence-${regKey}`;
 };
 
+const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, password:string) => {
+  const installed_app_id = installedAppId(regkey);
+  const agent_key = await makeKey(
+    adminWebsocket,
+    `${password}-${regkey}`
+  );
+  if (agent_key) {
+    const appInfo = await adminWebsocket.installApp({
+      agent_key,
+      path: HAPP_PATH,
+      installed_app_id,
+      membrane_proofs: {},
+      network_seed: NETWORK_SEED,
+    });
+    await adminWebsocket.enableApp({ installed_app_id });
+
+    console.log("installing", regkey, appInfo);
+    // @ts-ignore
+    const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"];
+
+    const creds = await genCredsForPass(regkey, password)
+
+    await grantUIPassword(
+      adminWebsocket,
+      cell_id,
+      creds.capSecret,
+      { [GrantedFunctionsType.All]: null },
+      creds.signingKey
+    );
+  } else {
+    throw(`error creating agent_key`);
+  }
+}
+
 app.post("/regkey/:key", async (req: Request, res: Response) => {
   const regkey = req.params.key;
-console.log("HERE", regkey)
   if (redirecting(regkey, req, res)) {
     return;
   }
@@ -265,49 +296,14 @@ console.log("HERE", regkey)
     );
 
     if (!appInfo) {
-      const agent_key = await makeKey(
-        adminWebsocket,
-        `${req.body.password}-${regkey}`
-      );
-      if (agent_key) {
-        const appInfo = await adminWebsocket.installApp({
-          agent_key,
-          path: HAPP_PATH,
-          installed_app_id,
-          membrane_proofs: {},
-          network_seed: NETWORK_SEED,
-        });
-        await adminWebsocket.enableApp({ installed_app_id });
-
-        console.log("installing", req.params.key, appInfo);
-        // @ts-ignore
-        const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"];
-
-        await setCredsForPass(
-          true,
-          regkey,
-          res,
-          adminWebsocket,
-          cell_id,
-          installed_app_id,
-          req.body.password
-        );
-      } else {
-        doSend(res, `<h2>error creating agent_key</h2>`);
-      }
-    } else {
-      //@ts-ignore
-      const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"];
-      await setCredsForPass(
-        false,
-        regkey,
-        res,
-        adminWebsocket,
-        cell_id,
-        installed_app_id,
-        req.body.password
-      );
+      await installAgent(adminWebsocket, regkey, req.body.password)
     }
+    await setCredsForPass(
+      regkey,
+      req.body.password,
+      installed_app_id,
+      res,
+    );
     adminWebsocket.client.close();
   } catch (e) {
     doError(res, e);
@@ -369,6 +365,36 @@ submitButton.addEventListener("click",checkpass)
     doError(res, e);
   }
 };
+
+app.get("/gen/:count", async (req: Request, res: Response) => {
+  const count = parseInt(req.params.count)
+
+  try {
+    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
+    const adminWebsocket = await AdminWebsocket.connect(url);
+    // const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
+    //   a.installed_app_id.toLocaleLowerCase() <
+    //   b.installed_app_id.toLocaleLowerCase()
+    //     ? -1
+    //     : 1
+    // );
+    for (let i=1; i<= count; i+=1) {
+      await installAgent(adminWebsocket, `agent${i}`, `${i}`)
+    }
+    const body = `
+    <h3>generated ${count} instances
+`;
+    doSend(res, body);
+    adminWebsocket.client.close();
+  } catch (e) {
+    doError(res, e);
+    return;
+  }
+});
+
+app.get("/regkey", async (req: Request, res: Response) => {
+  res.redirect("/");
+});
 
 app.post("/regkey", async (req: Request, res: Response) => {
   await handleReg(req.body.key, req, res);
@@ -445,7 +471,7 @@ app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
       //@ts-ignore
       const cellId = a.cell_info["emergence"][0].provisioned.cell_id;
       //@ts-ignore
-      return `<pre>id: ${a.installed_app_id}
+      return `<pre style="font-size:12px;">id: ${a.installed_app_id}
   DNA: ${encodeHashToBase64(cellId[0])}
 Agent: ${encodeHashToBase64(cellId[1])}`;
     });
@@ -539,6 +565,7 @@ const doSend = (res: Response, body: string) => {
         text-align: center;
         background-color: rgba(255,255,255,.5);
         padding: 50px 0 50px 0;
+        overflow: auto;
       }
       </style>
     </head>
