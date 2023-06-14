@@ -249,7 +249,7 @@ const installedAppId = (regKey: string) => {
 
 app.post("/regkey/:key", async (req: Request, res: Response) => {
   const regkey = req.params.key;
-
+console.log("HERE", regkey)
   if (redirecting(regkey, req, res)) {
     return;
   }
@@ -341,12 +341,13 @@ const handleReg = async (regkey: string, req: Request, res: Response) => {
       body = `
 <div>Please enter a password to create agent keys for ${regkey}</div>
 <div style="margin-top:20px;"><b>Save this password. It cannot be reset!</b></div>
-<form style="margin-top:20px; action="/regkey/${regkey}" method="post">
+<form style="margin-top:20px;" action="/regkey/${regkey}" method="post">
 <div style="display:flex; flex-direction:column;">
 <div>Password: <input id="pass1" type="password" name="password" autofocus></input></div>
 <div>Confirm: <input id="pass2" type="password" name="password2"></input></div>
 <div><input id="submit" type="submit" name="submit" value="Create Agent Keys"/></div>
 </div>
+<input type="hidden" value="${regkey}" name="regkey" />
 </form>
 <script>
 function checkpass(e) {
