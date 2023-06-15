@@ -69,7 +69,7 @@ const INSTANCE_COUNT = parseInt(
 const MY_INSTANCE_NUM = parseInt(
   process.env.MY_INSTANCE_NUM ? process.env.MY_INSTANCE_NUM : "1"
 );
-const APP_PATH_FOR_CLIENT = process.env.APP_PATH_FOR_CLIENT || "/appwebsocket";
+const APP_PATH_FOR_CLIENT = process.env.APP_PATH_FOR_CLIENT || "appwebsocket";
 const APP_PORT_FOR_INTERFACE: number = parseInt(
   process.env.APP_PORT_FOR_INTERFACE || "3030"
 );
