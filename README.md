@@ -42,7 +42,7 @@ WEBHAPP_PATH="/path/to/your-app.webhapp"
 CONDUCTOR_CONFIG_PATH="" #default is get this from the .hc file created by `hc s g`
 LAIR_CLI_PATH="/path/to/bin/lair-keystore-cli"
 INSTANCE_COUNT="1"
-APP_PORT_FOR_CLIENT="3030"
+APP_PATH_FOR_CLIENT="appWebsocket"
 NETWORK_SEED="some-unique-value"
 ```
 
@@ -56,8 +56,8 @@ npm run dev
 To test using the reverse proxy:
 
 1. create a domain name that points to your local IP address (yes this is werid!)
-2. install ngix and copy [this config file](00-reverse-proxy.conf) to `/etc/nginx/conf.d` editing the domain name to match what you have set up.
-3. Edit the `INSTANCE_COUNT` and `APP_PORT_FOR_CLIENT` items of the `.env` file to match your node count and ports.
+2. install caddy and copy [this config file](Caddyfile) to `/etc/caddy` editing the domain name to match what you have set up.
+3. Edit the `INSTANCE_COUNT` and `APP_PATH_FOR_CLIENT` items of the `.env` file to match your node count and path.
 
 On a local network this should work without installing any SSL certs.
 
