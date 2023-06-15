@@ -258,7 +258,7 @@ const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, pass
       installed_app_id,
       membrane_proofs: {},
       network_seed: NETWORK_SEED,
-    });
+    },30000);
     await adminWebsocket.enableApp({ installed_app_id });
 
     console.log("installing", regkey, appInfo);
