@@ -575,7 +575,7 @@ const doSend = (res: Response, body: string) => {
       <h2> Web Access</h2>
       ${body}
       </div>
-      <div style=" width: 100%;display:flex; justify-content: center; position:absolute; bottom:5px; margin:auto">
+      <div style=" z-index:-1; width: 100%;display:flex; justify-content: center; position:absolute; bottom:5px; margin:auto">
       <img style="background:white; padding:8px 12px; width:90%; max-width:450px" src="/images/powered_by_holochain.png" />
       </div>
     </body>
