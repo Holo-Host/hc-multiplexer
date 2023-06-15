@@ -1,0 +1,44 @@
+# The Caddyfile is an easy way to configure your Caddy web server.
+#
+# Unless the file starts with a global options block, the first
+# uncommented line is always the address of your site.
+#
+# To use your own domain name (with automatic HTTPS), first make
+# sure your domain's A/AAAA DNS records are properly pointed to
+# this machine's public IP, then replace ":80" below with your
+# domain name.
+
+{
+	auto_https off
+
+	acme_ca https://acme-v02.api.letsencrypt.org/directory
+	log {
+		level ERROR
+	}
+}
+:443 {
+	bind
+
+	log {
+		output file /var/log/caddy/access-:443.log
+	}
+
+	tls /var/lib/secrets/infra.holochain.org/cert.pem /var/lib/secrets/infra.holochain.org/key.pem
+	reverse_proxy /appWebsocket http://127.0.0.1:3030
+	reverse_proxy http://127.0.0.1:3000
+}
+
+:80 {
+	bind
+
+	log {
+		output file /var/log/caddy/access-:80.log
+	}
+
+	reverse_proxy /appWebsocket http://127.0.0.1:3030
+	reverse_proxy http://127.0.0.1:3000
+}
+
+
+# Refer to the Caddy docs for more information:
+# https://caddyserver.com/docs/caddyfile
