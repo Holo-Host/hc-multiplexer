@@ -69,7 +69,7 @@ const INSTANCE_COUNT = parseInt(
 const MY_INSTANCE_NUM = parseInt(
   process.env.MY_INSTANCE_NUM ? process.env.MY_INSTANCE_NUM : "1"
 );
-const APP_PORT_FOR_CLIENT = process.env.APP_PORT_FOR_CLIENT || "3030";
+const APP_PATH_FOR_CLIENT = process.env.APP_PATH_FOR_CLIENT || "/appwebsocket";
 const APP_PORT_FOR_INTERFACE: number = parseInt(
   process.env.APP_PORT_FOR_INTERFACE || "3030"
 );
@@ -129,7 +129,7 @@ const credsToJson = (creds: any, installed_app_id: string, regkey: string) => {
   return JSON.stringify({
     installed_app_id,
     regkey,
-    appPort: APP_PORT_FOR_CLIENT,
+    appPath: APP_PATH_FOR_CLIENT,
     creds: {
       capSecret: uint8ToBase64(creds.capSecret),
       keyPair: {
