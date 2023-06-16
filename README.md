@@ -67,9 +67,9 @@ On a local network this should work without installing any SSL certs.
 1. make sure the following binarys are available on the system:
    - holochain
    - lair
-   - nginx
+   - caddy
 2. put the app's `.happ` file and ui someplace on the system.
-3. configure nignx with [this config file](00-reverse-proxy.conf) in `/etc/nginx/conf.d` editing the domain name to match what you have set up.
+3. configure nignx with [this config file](Caddyfile) in `/etc/caddy` editing the domain name to match what you have set up.
 4. Create a `.env` file as above
 5. ensure that holochain's config accepts app port websocket requests that match your UI (3030 for emergence) and that the nginx reverse proxy support is proxying from that port.
 6. ensure that your server spins up the node server `npm run start`
