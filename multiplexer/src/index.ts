@@ -440,7 +440,7 @@ app.get("/install", async (req: Request, res: Response) => {
 <h3>Launcher Install Instructions:</h3>
 <ol style="text-align: left">
 <li>
-Download the the <a href="https://drive.switch.ch/index.php/s/eRCdJxAuSWW2YPp">Launcher for your platfrom</a>
+Download the the <a href="https://drive.switch.ch/index.php/s/UH1kPtKF6nECyAy">Launcher for your platfrom</a>
 </li>
 <li>
 Download the <a href="emergence.webhapp">Emergence webhapp file</a>
