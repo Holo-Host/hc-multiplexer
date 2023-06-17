@@ -10,11 +10,12 @@ import {
   CellId,
   GrantedFunctions,
   encodeHashToBase64,
+  SigningCredentials,
+  KeyPair,
 } from "@holochain/client";
 // import { HoloHash } from '@whi/holo-hash';
 import blake2b from "blake2b";
-//import * as ed25519 from "@noble/ed25519";
-import nacl from "tweetnacl";
+import { ed25519 } from "@noble/curves/ed25519";
 
 import { execSync } from "child_process";
 import "dotenv/config";
@@ -106,7 +107,7 @@ const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
 let globalAdminWebsocket: AdminWebsocket
 
 async function createAdminWebsocket() {
-  globalAdminWebsocket = await AdminWebsocket.connect(url)
+  globalAdminWebsocket = await AdminWebsocket.connect(new URL(url))
   console.log("connected to admin port at: ", url)
 }
 
@@ -123,7 +124,8 @@ const base64ToUint8 = (b64: string) =>
 
 const deriveSigningKeys = async (
   seed: string
-): Promise<[nacl.SignKeyPair, AgentPubKey]> => {
+): Promise<[KeyPair, AgentPubKey]> => {
+
   //const interim = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
   //  const privateKey = await blake2b(interim.length).update(Buffer.from(seed)).digest('binary')
   //  const publicKey = await ed25519.getPublicKeyAsync(privateKey);
@@ -133,19 +135,19 @@ const deriveSigningKeys = async (
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0,
   ]);
-  const seedBytes = await blake2b(interim.length)
+  const privateKey = blake2b(interim.length)
     .update(Buffer.from(seed))
     .digest("binary");
 
-  const keyPair = nacl.sign.keyPair.fromSeed(seedBytes);
+  const publicKey = ed25519.getPublicKey(privateKey);
 
   const signingKey = new Uint8Array(
-    [132, 32, 36].concat(...keyPair.publicKey).concat(...[0, 0, 0, 0])
+    [132, 32, 36].concat(...publicKey).concat(...[0, 0, 0, 0])
   );
-  return [keyPair, signingKey];
+  return [{ privateKey, publicKey }, signingKey];
 };
 
-const credsToJson = (creds: any, installed_app_id: string, regkey: string) => {
+const credsToJson = (creds: SigningCredentials, installed_app_id: string, regkey: string) => {
   return JSON.stringify({
     installed_app_id,
     regkey,
@@ -154,7 +156,7 @@ const credsToJson = (creds: any, installed_app_id: string, regkey: string) => {
       capSecret: uint8ToBase64(creds.capSecret),
       keyPair: {
         publicKey: uint8ToBase64(creds.keyPair.publicKey),
-        secretKey: uint8ToBase64(creds.keyPair.secretKey),
+        privateKey: uint8ToBase64(creds.keyPair.privateKey),
       },
       signingKey: uint8ToBase64(creds.signingKey),
     },
@@ -336,7 +338,6 @@ const handleReg = async (regkey: string, req: Request, res: Response) => {
 
   try {
     const adminWebsocket = await getAdminWebsocket()
-
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
     const appInfo = apps.find(
@@ -906,7 +907,7 @@ try {
     //adminWebsocket.client.close();
   } catch (e) {
     // @ts-ignore
-    console.log(`Error attaching app interface: ${e}.`); // .data ? e.data.data : e.message
+    console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
   }
 
   globWss = new WebSocketServer({
