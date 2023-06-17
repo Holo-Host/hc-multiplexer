@@ -354,7 +354,6 @@ const handleReg = async (regkey: string, req: Request, res: Response) => {
 function checkpass(e) {
   let disabled = false
   let validationText = ""
-  console.log("vals", pass1.value, pass2.value)
   if (pass1.value != pass2.value) {
     disabled = true
     validationText = "Passwords don't match!"
