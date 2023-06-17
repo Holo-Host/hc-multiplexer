@@ -906,7 +906,7 @@ try {
     //adminWebsocket.client.close();
   } catch (e) {
     // @ts-ignore
-    console.log(`Error attaching app interface: ${e.data ? e.data.data : e.message}.`);
+    console.log(`Error attaching app interface: ${e}.`); // .data ? e.data.data : e.message
   }
 
   globWss = new WebSocketServer({
