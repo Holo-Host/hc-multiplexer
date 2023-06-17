@@ -21,7 +21,6 @@ globalThis.crypto = await import("node:crypto");
 
 import cookieParser from "cookie-parser";
 import * as fs from "fs";
-import { create } from "domain";
 
 const app: Application = express();
 
@@ -787,6 +786,7 @@ let globalAdminWebsocket: AdminWebsocket
 
 const createAdminWebsocket = async () => {
   globalAdminWebsocket = await AdminWebsocket.connect(url)
+  console.log("connected to admin port at: ", url)
 }
 
 const getAdminWebsocket = async () : Promise<AdminWebsocket> => {
