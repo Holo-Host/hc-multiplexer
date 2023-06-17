@@ -21,6 +21,7 @@ globalThis.crypto = await import("node:crypto");
 
 import cookieParser from "cookie-parser";
 import * as fs from "fs";
+import { create } from "domain";
 
 const app: Application = express();
 
@@ -499,7 +500,7 @@ Agent: ${encodeHashToBase64(cellId[1])}`;
     <div style="text-align:left;overflow:auto;height:90%; width:90%;" class="card container">${apps.join("<br>")}</div>
 `;
     doSend(res, body);
-    adminWebsocket.client.close();
+    //adminWebsocket.client.close();
   } catch (e) {
     doError(res, e);
     return;
@@ -560,12 +561,17 @@ document.getElementById("regkey").addEventListener("input", (e)=>{
 ]);
 
 const doError = (res: Response, err: any) => {
+  if (err.message == "Socket is not open") {
+    createAdminWebsocket()
+  }
   doSend(
     res,
     `
-  <div style="border: solid 1px; border-radius:10px;padding:0 20px 20px 20px;min-width:300px;">
-  <h4>Error!</h4>
-  ${err.message ? err.message : JSON.stringify(err)}
+  <div class="card container" style="flex-direction:column" >
+    <h4>Error!</h4>
+    <div st>
+      ${err.message ? err.message : JSON.stringify(err)}
+    </div>
   </div>
   `
   );
@@ -778,7 +784,6 @@ app.listen(PORT, "0.0.0.0", (): void => {
 
 const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
 let globalAdminWebsocket: AdminWebsocket
-
 
 const createAdminWebsocket = async () => {
   globalAdminWebsocket = await AdminWebsocket.connect(url)
