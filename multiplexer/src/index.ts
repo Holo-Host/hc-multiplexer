@@ -458,22 +458,24 @@ app.get("/install", async (req: Request, res: Response) => {
   doSend(
     res,
     `
-<h3>Launcher Install Instructions:</h3>
-<ol style="text-align: left">
-<li>
-Download the the <a href="https://drive.switch.ch/index.php/s/UH1kPtKF6nECyAy">Launcher for your platfrom</a>
-</li>
-<li>
-Download the <a href="emergence.webhapp">Emergence webhapp file</a>
-</li>
-<li>
-Open the launcher and click on "App Store," then "Select app from Filesystem" and choose the file you downloaded from step 2.
-</li>
-${network_seed}
-<li>
-Enjoy!
-</li>
-</ol>
+    <div class="card install-instructions">
+      <h3>Launcher Install Instructions:</h3>
+      <ol style="text-align: left">
+      <li>
+      Download the the <a href="https://drive.switch.ch/index.php/s/UH1kPtKF6nECyAy">Launcher for your platfrom</a>
+      </li>
+      <li>
+      Download the <a href="emergence.webhapp">Emergence webhapp file</a>
+      </li>
+      <li>
+      Open the launcher and click on "App Store," then "Select app from Filesystem" and choose the file you downloaded from step 2.
+      </li>
+      ${network_seed}
+      <li>
+      Enjoy!
+      </li>
+      </ol>
+    </div>
 `
   );
 });
@@ -690,6 +692,11 @@ const doSend = (res: Response, body: string, code?: string) => {
         .password-set {
           max-width: 320px;
           margin: 0 auto;
+        }
+
+        .install-instructions {
+          margin: 0 auto;
+          max-width: 720px;
         }
     
     
