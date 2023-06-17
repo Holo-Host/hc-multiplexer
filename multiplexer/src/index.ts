@@ -286,8 +286,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
   }
 
   try {
-    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await getAdminWebsocket()
 
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
@@ -304,7 +303,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
       installed_app_id,
       res,
     );
-    adminWebsocket.client.close();
+    //adminWebsocket.client.close();
   } catch (e) {
     doError(res, e);
   }
@@ -316,8 +315,8 @@ const handleReg = async (regkey: string, req: Request, res: Response) => {
   }
 
   try {
-    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await getAdminWebsocket()
+
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
     const appInfo = apps.find(
@@ -381,7 +380,7 @@ pass2.addEventListener("input",checkpass)
   `;
     }
     doSend(res, body);
-    adminWebsocket.client.close();
+    //adminWebsocket.client.close();
   } catch (e) {
     doError(res, e);
   }
@@ -391,8 +390,8 @@ app.get("/gen/:count", async (req: Request, res: Response) => {
   const count = parseInt(req.params.count)
 
   try {
-    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await getAdminWebsocket()
+
     // const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
     //   a.installed_app_id.toLocaleLowerCase() <
     //   b.installed_app_id.toLocaleLowerCase()
@@ -406,7 +405,7 @@ app.get("/gen/:count", async (req: Request, res: Response) => {
     <h3>generated ${count} instances
 `;
     doSend(res, body);
-    adminWebsocket.client.close();
+    //adminWebsocket.client.close();
   } catch (e) {
     doError(res, e);
     return;
@@ -481,8 +480,7 @@ app.get("/install", async (req: Request, res: Response) => {
 
 app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await getAdminWebsocket();
     const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
       a.installed_app_id.toLocaleLowerCase() <
       b.installed_app_id.toLocaleLowerCase()
@@ -768,17 +766,6 @@ app.get("/fail", async (req: Request, res: Response) => {
 //   console.log("error starting holochian:", e )
 // }
 
-try {
-  const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-  const adminWebsocket = await AdminWebsocket.connect(url);
-  console.log(`Starting app interface on port ${APP_PORT_FOR_INTERFACE}`);
-  await adminWebsocket.attachAppInterface({ port: APP_PORT_FOR_INTERFACE });
-  adminWebsocket.client.close();
-} catch (e) {
-  // @ts-ignore
-  console.log(`Error attaching app interface: ${e.message}.`);
-}
-
 app.use("/", express.static(HAPP_UI_PATH));
 
 app.get("/reset", (req: Request, res: Response): void => {
@@ -788,3 +775,28 @@ app.get("/reset", (req: Request, res: Response): void => {
 app.listen(PORT, "0.0.0.0", (): void => {
   console.log("SERVER IS UP ON PORT:", PORT);
 });
+
+const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
+let globalAdminWebsocket: AdminWebsocket
+
+
+const createAdminWebsocket = async () => {
+  globalAdminWebsocket = await AdminWebsocket.connect(url)
+}
+
+const getAdminWebsocket = async () : Promise<AdminWebsocket> => {
+  if (!globalAdminWebsocket) {
+    await createAdminWebsocket()
+  }
+  return globalAdminWebsocket
+}
+
+getAdminWebsocket().then(adminWebsocket=>{
+    console.log(`Starting app interface on port ${APP_PORT_FOR_INTERFACE}`);
+    adminWebsocket.attachAppInterface({ port: APP_PORT_FOR_INTERFACE }).catch(e=> {
+        console.log(`Error attaching app interface: ${e.data ? e.data.data : e.message}.`);
+    })
+  }).catch (e => {
+  // @ts-ignore
+  console.log(`Error getting admin websocket: ${e.message}.`);
+})
