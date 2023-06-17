@@ -79,22 +79,6 @@ const APP_PORT_FOR_INTERFACE: number = parseInt(
   process.env.APP_PORT_FOR_INTERFACE || "3030"
 );
 
-let aws: AdminWebsocket | null = null
-async function aws_connect(): Promise<AdminWebsocket> {
-  if (aws) {
-    return aws
-  } else {
-    const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`
-    try {
-      const tmp = await AdminWebsocket.connect(url)
-      aws = tmp
-      return aws
-    } catch (e) {
-      throw e
-    }
-  }
-}
-
 const instanceForRegKey = (regkey: string): number => {
   return (Buffer.from(regkey)[0] % INSTANCE_COUNT) + 1;
 };
@@ -117,6 +101,21 @@ const getLairSocket = () => {
   if (!result) throw "Unable to find connectuion URL";
   return result[1];
 };
+
+const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
+let globalAdminWebsocket: AdminWebsocket
+
+async function createAdminWebsocket() {
+  globalAdminWebsocket = await AdminWebsocket.connect(url)
+  console.log("connected to admin port at: ", url)
+}
+
+async function getAdminWebsocket() : Promise<AdminWebsocket> {
+  if (!globalAdminWebsocket) {
+    await createAdminWebsocket()
+  }
+  return globalAdminWebsocket
+}
 
 const uint8ToBase64 = (arr: Uint8Array) => Buffer.from(arr).toString("base64");
 const base64ToUint8 = (b64: string) =>
@@ -307,7 +306,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
   }
 
   try {
-    const adminWebsocket = await aws_connect();
+    const adminWebsocket = await getAdminWebsocket()
 
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
@@ -336,7 +335,8 @@ const handleReg = async (regkey: string, req: Request, res: Response) => {
   }
 
   try {
-    const adminWebsocket = await aws_connect();
+    const adminWebsocket = await getAdminWebsocket()
+
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
     const appInfo = apps.find(
@@ -410,7 +410,8 @@ app.get("/gen/:count", async (req: Request, res: Response) => {
   const count = parseInt(req.params.count)
 
   try {
-    const adminWebsocket = await aws_connect();
+    const adminWebsocket = await getAdminWebsocket()
+
     // const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
     //   a.installed_app_id.toLocaleLowerCase() <
     //   b.installed_app_id.toLocaleLowerCase()
@@ -452,9 +453,8 @@ const redirecting = (regkey: string, req: Request, res: Response): boolean => {
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
     const found = origin.match(/(.*)([0-9]+)(\..*\.*)/);
-
     if (found && parseInt(found[2]) != hostForRegkey) {
-      const target = `${req.headers["x-forwarded-proto"]}://${found[1]}${hostForRegkey}${found[3]}`;
+      const target = `${found[1]}${hostForRegkey}${found[3]}/regkey/${regkey}`;
       console.log("REDIRECTING TO ", target);
       res.redirect(target);
       return true;
@@ -476,29 +476,31 @@ app.get("/install", async (req: Request, res: Response) => {
   doSend(
     res,
     `
-<h3>Launcher Install Instructions:</h3>
-<ol style="text-align: left">
-<li>
-Download the the <a href="https://drive.switch.ch/index.php/s/UH1kPtKF6nECyAy">Launcher for your platfrom</a>
-</li>
-<li>
-Download the <a href="emergence.webhapp">Emergence webhapp file</a>
-</li>
-<li>
-Open the launcher and click on "App Store," then "Select app from Filesystem" and choose the file you downloaded from step 2.
-</li>
-${network_seed}
-<li>
-Enjoy!
-</li>
-</ol>
+    <div class="card install-instructions">
+      <h3>Launcher Install Instructions:</h3>
+      <ol style="text-align: left">
+      <li>
+      Download the the <a href="https://drive.switch.ch/index.php/s/UH1kPtKF6nECyAy">Launcher for your platfrom</a>
+      </li>
+      <li>
+      Download the <a href="emergence.webhapp">Emergence webhapp file</a>
+      </li>
+      <li>
+      Open the launcher and click on "App Store," then "Select app from Filesystem" and choose the file you downloaded from step 2.
+      </li>
+      ${network_seed}
+      <li>
+      Enjoy!
+      </li>
+      </ol>
+    </div>
 `
   );
 });
 
 app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const adminWebsocket = await aws_connect();
+    const adminWebsocket = await getAdminWebsocket();
     const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
       a.installed_app_id.toLocaleLowerCase() <
       b.installed_app_id.toLocaleLowerCase()
@@ -514,7 +516,7 @@ app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
 Agent: ${encodeHashToBase64(cellId[1])}`;
     });
     const body = `
-    <div style="text-align:left">${apps.join("<br>")}</div>
+    <div style="text-align:left;overflow:auto;height:90%; width:90%;" class="card container">${apps.join("<br>")}</div>
 `;
     doSend(res, body);
     //adminWebsocket.client.close();
@@ -526,14 +528,6 @@ Agent: ${encodeHashToBase64(cellId[1])}`;
 
 app.get("/", [
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const adminWebsocket = await aws_connect();
-      const cellIds = await adminWebsocket.listCellIds();
-      //adminWebsocket.client.close();
-    } catch (e) {
-      doError(res, e);
-      return;
-    }
     if (req.cookies["creds"]) {
       const creds = JSON.parse(req.cookies["creds"]);
       if (redirecting(creds.regkey, req, res)) {
@@ -586,12 +580,17 @@ document.getElementById("regkey").addEventListener("input", (e)=>{
 ]);
 
 const doError = (res: Response, err: any) => {
+  if (err.message == "Socket is not open") {
+    createAdminWebsocket()
+  }
   doSend(
     res,
     `
-  <div style="border: solid 1px; border-radius:10px;padding:0 20px 20px 20px;min-width:300px;">
-  <h4>Error!</h4>
-  ${err.message ? err.message : JSON.stringify(err)}
+  <div class="card container" style="flex-direction:column" >
+    <h4>Error!</h4>
+    <div st>
+      ${err.message ? err.message : JSON.stringify(err)}
+    </div>
   </div>
   `
   );
@@ -603,15 +602,36 @@ const doSend = (res: Response, body: string, code?: string) => {
   <html lang="en">
     <head>
       <meta charset="UTF-8" />
-  
 
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">      \
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Emergence Agent Setup</title>
       ${code? `<script>${code}</script>`:""}
       <style>
+
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-Regular.ttf');
+        font-weight: regular;
+      }
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-SemiBold.ttf');
+        font-weight: bold;
+      }
+      
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-Italic.ttf');
+        font-style: italic;
+      }
+      
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-SemiBoldItalic.ttf');
+        font-style: italic;
+        font-weight: bold;
+      }
+      
+
         html, body {
           font-family: "Poppins", sans-serif;
           font-size: 18px;
@@ -715,6 +735,11 @@ const doSend = (res: Response, body: string, code?: string) => {
         .password-set {
           max-width: 320px;
           margin: 0 auto;
+        }
+
+        .install-instructions {
+          margin: 0 auto;
+          max-width: 720px;
         }
     
     
@@ -875,12 +900,13 @@ async function realWsConnect(): Promise<WebSocket> {
 
 try {
   try {
-    const adminWebsocket = await aws_connect();
+    const adminWebsocket = await getAdminWebsocket();
     console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
     await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
     //adminWebsocket.client.close();
   } catch (e) {
-    console.log('maybe not a problem', e)
+    // @ts-ignore
+    console.log(`Error attaching app interface: ${e.data ? e.data.data : e.message}.`);
   }
 
   globWss = new WebSocketServer({
