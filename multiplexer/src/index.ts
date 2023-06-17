@@ -328,36 +328,57 @@ const handleReg = async (regkey: string, req: Request, res: Response) => {
     let body;
     if (appInfo) {
       body = `
+<div class="card password-set"">
   Please enter a password to login as ${regkey}
   <form action="/regkey/${regkey}" method="post">
-    Password <input type="password" name="password" autofocus></input>
-    <input type="submit" name="submit" value="Login"/>
+    Password <input type="password" name="password" autofocus class="input password"></input>
+    <input type="submit" name="submit" id="submit"class="submit-button" value="Login"/>
   </form>
   <div style="margin-top:20px; font-size:80%">Not ${regkey}? <a href="/reset">Clear agent session</a> </div>
+</div>
   `;
     } else {
       body = `
-<div>Please enter a password to create agent keys for ${regkey}</div>
-<div style="margin-top:20px;"><b>Save this password. It cannot be reset!</b></div>
-<form style="margin-top:20px;" action="/regkey/${regkey}" method="post">
-<div style="display:flex; flex-direction:column;">
-<div>Password: <input id="pass1" type="password" name="password" autofocus></input></div>
-<div>Confirm: <input id="pass2" type="password" name="password2"></input></div>
-<div><input id="submit" type="submit" name="submit" value="Create Agent Keys"/></div>
-</div>
-<input type="hidden" value="${regkey}" name="regkey" />
-</form>
+      <div class="card password-set">
+        <div>Please enter a password to create agent keys for ${regkey}</div>
+        <div style="margin-top:20px;"><b>Save this password. It cannot be reset!</b></div>
+        <form style="margin-top:20px;" action="/regkey/${regkey}" method="post">
+        <div style="display:flex; flex-direction:column;">
+        <div id="validation"></div>
+        <div><input id="pass1" type="password" name="password" autofocus placeholder="Password" class="input password"></input></div>
+        <div><input id="pass2" type="password" name="password2" placeholder="Confirm Password" class="input password"></input></div>
+        <div><input disabled id="submit" type="submit" name="submit" value="Create Agent Keys" class="submit-button disabled"/></div>
+        </div>
+        <input type="hidden" value="${regkey}" name="regkey" />
+        </form>
+      </div>
 <script>
 function checkpass(e) {
-  const pass1 = document.getElementById("pass1").value
-  const pass2 = document.getElementById("pass2").value
-  if (pass1 != pass2) {
-    alert("passwords don't match!")
-    e.preventDefault()
+  let disabled = false
+  let validationText = ""
+  if (pass1.value != pass2.value) {
+    disabled = true
+    validationText = "Passwords don't match!"
   }
+  if (!pass1 || !pass2) {
+    disabled = true
+  }
+  const validation = document.getElementById("validation")
+  validation.innerHTML = validationText
+  if (disabled) {
+    button.disabled = true
+    button.classList.add("disabled")
+  } else {
+    button.disabled = false
+    button.classList.remove("disabled")
+  }
+
 }
-const submitButton = document.getElementById("submit")
-submitButton.addEventListener("click",checkpass)
+const button = document.getElementById("submit")
+const pass1 = document.getElementById("pass1")
+const pass2 = document.getElementById("pass2")
+pass1.addEventListener("input",checkpass)
+pass2.addEventListener("input",checkpass)
 </script>
   `;
     }
@@ -510,18 +531,40 @@ app.get("/", [
       doSend(
         res,
         `
-  <h3>Welcome to Emergence<br />a Holochain App for Dweb</h3>
-  <div>To create an agent or log-in, please use the Emergence Registration Key from your conference registration packet
-  and either scan the QR code, or enter it here:
+  <div class="container">
+    <div class="block">
+        <span>DWeb Camp 2023</span>
+        <h3>Discovering Flows</h3>
+        <div> Welcome. Flows are everywhere, but most of us don’t perceive them. Discovering flow means tapping into the most powerful forces around us:
+
+        Nature. Technology. Community. You.</div>
+        <div class="computer-installation">
+        If you want to install the holochain-native emergence hApp on your computer instead, please follow <a href="/install"> these instructions.</a>
+        </div>
+    </div>
+    <div class="block">
+      <div class="card">
+          <span class="cta-prompt">Enter your registration key to get started</span>
+          <form action="/regkey/" method="post">
+            <input id="regkey" placeholder="e.g. 5XyWW1Qt6" class="regkey input" type="input" name="key" autofocus></input>
+            <input disabled id="submit" class="submit-button disabled" type="submit" name="submit" value="Next: Set your password"></input>
+          </form>
+          <img class="pwrd-by" src="/images/powered_by_holochain.png" />
+      </div>
+    </div>
   </div>
-  
-    <form style="margin-top:40px" action="/regkey/" method="post">
-    Reg Key <input type="input" name="key" autofocus></input>
-    <input type="submit" name="submit" value="Next"></input>
-  </form>
-  <p style="margin-top:40px; color:gray; font-size:14px">
-    If you want to install the holochain-native emergence hApp on your computer instead, please follow <a href="/install"> these instructions.</a>
-  </p>
+<script>
+document.getElementById("regkey").addEventListener("input", (e)=>{
+  const button = document.getElementById("submit")
+  if (!e.target.value) {
+    button.disabled = true
+    button.classList.add("disabled")
+  } else {
+    button.disabled = false
+    button.classList.remove("disabled")
+  }
+});
+</script>
     `
       );
     }
@@ -540,45 +583,169 @@ const doError = (res: Response, err: any) => {
   );
 };
 
-const doSend = (res: Response, body: string) => {
+const doSend = (res: Response, body: string, code?: string) => {
   const page = `
   <!DOCTYPE html>
   <html lang="en">
     <head>
       <meta charset="UTF-8" />
   
+
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">      \
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Emergence Agent Setup</title>
+      ${code? `<script>${code}</script>`:""}
       <style>
-      html, body {
-        font-family: "Roboto", sans-serif;
-        font-size: 18px;
-        line-height: 1.5;
-        color: #333;
-        padding: 0px;
-        padding-bottom: 76px; /* Adjust this value based on the height of your bottom navigation */
-        height: 100%; overflow: hidden; /* In general, it's a good idea to have the body take up the full viewport height and have a fixed layout with no scrollbar. Then, you can have a scrollable inner container like .pane-content to handle the overflow of the content. This approach helps keep the page structure clean and allows you to control the scrolling behavior more effectively. */
-      }
-      .app-info {
+        html, body {
+          font-family: "Poppins", sans-serif;
+          font-size: 18px;
+          line-height: 1.5;
+          color: #333;
+          margin: 0; padding: 0;
+          height: 100%; overflow: hidden; /* In general, it's a good idea to have the body take up the full viewport height and have a fixed layout with no scrollbar. Then, you can have a scrollable inner container like .pane-content to handle the overflow of the content. This approach helps keep the page structure clean and allows you to control the scrolling behavior more effectively. */
+        }
+        .app-info {
+          width: 100%;
+          height: 100%;
+          overflow-y: auto;
+        }
+    
+        .block {
+          padding: 10px;
+        }
+    
+        .card {
+          min-width: 280px;
+          padding: 10px; border-radius: 10px; box-shadow: 0px 10px 15px rgba(0,0,0,.25); background-color: white;
+        }
+    
+        .submit-button {
+          background: linear-gradient(129.46deg, #5833CC 8.45%, #397ED9 93.81%);
+          min-height: 30px;
+          min-width: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          box-shadow: 0 10px 15px rgba(0,0,0,.35);
+          border-radius: 5px;
+          padding: 0 10px;
+          cursor: pointer;
+          font-size: 16px;
+          height: 50px;
+          line-height: 40px;
+          outline: 0;
+          width: calc(100%);
+          border: 0;
+          margin: 10px auto;
+          position: relative;
+          z-index: 2;
+        }
 
-        display:flex; justify-content:center; align-items:center; flex-direction: column;
-        max-width: 500px;
-        margin: 0 auto;
-        text-align: center;
-        background-color: rgba(255,255,255,.5);
-        padding: 50px 0 50px 0;
-        overflow: auto;
-      }
+        .disabled {
+          background: #aaa;
+        }
+    
+        .pwrd-by {
+          background:white; padding:8px 12px; width:90%; max-width:450px;
+          position: relative;
+          z-index: 0;
+          display: block;
+          margin: 0 auto;
+        }
+    
+        .container {
+          letter-spacing: -.008rem;
+          display: flex; flex-direction: column;
+          text-align: left;
+          padding-top: 50px;
+          margin: 0 auto;
+        }
+    
+        .container h3 {
+          font-size: 36px;
+          line-height: 36px;
+          margin-top: 0;
+          margin-bottom: 0;
+        }
+    
+        .cta-prompt {
+          text-align: center;
+          font-size: 14px;
+          padding-bottom: 10px;
+          display: block;
+        }
+    
+        .input {
+          font-size: 16px; padding: 8px 12px; border-radius: 3px; border: 1px solid rgba(86, 92, 109, .3);
+          width: auto;
+          text-align: center;
+          height: 40px;
+        }
+
+        .regkey.input, .password.input {
+          display: block;
+          width: calc(100% - 24px);
+        }
+
+        .password.input {
+          margin-bottom: 5px;
+        }
+    
+        .computer-installation {
+          display: none;
+        }
+
+        .password-set {
+          max-width: 320px;
+          margin: 0 auto;
+        }
+    
+    
+        @media (min-width: 720px) {
+          .container {
+            flex-direction: row;
+            align-items: center;
+            max-width: 960px;
+          }
+    
+          .container h3 {
+            font-size: 48px;
+            line-height: 48px;
+          }
+          
+          .block {
+            padding: 0 25px;
+          }
+    
+          .computer-installation {
+            margin-top:40px; font-size:14px;
+            display: block;
+          }
+    
+          .cta-prompt {
+            font-size: 16px;
+            min-width: 320px;
+          }
+        }
+
+    
+        @media (min-width: 720px) and (min-height: 500px) {
+          .app-info {
+            display: flex;
+            align-items: center;
+          }
+          .container {
+            padding-top: 0;
+          }
+        }
       </style>
     </head>
     <body style="background-image: url(/images/dweb-background.jpg);    background-size: cover;"    >
       <div class="app-info">
-      <a href="/"><img width="75" src="/images/emergence-vertical.svg" /></a>
-      <h2> Web Access</h2>
       ${body}
-      </div>
-      <div style=" z-index:-1; width: 100%;display:flex; justify-content: center; position:absolute; bottom:5px; margin:auto">
-      <img style="background:white; padding:8px 12px; width:90%; max-width:450px" src="/images/powered_by_holochain.png" />
       </div>
     </body>
   </html>
