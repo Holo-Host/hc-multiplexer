@@ -434,9 +434,8 @@ const redirecting = (regkey: string, req: Request, res: Response): boolean => {
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
     const found = origin.match(/(.*)([0-9]+)(\..*\.*)/);
-
     if (found && parseInt(found[2]) != hostForRegkey) {
-      const target = `${req.headers["x-forwarded-proto"]}://${found[1]}${hostForRegkey}${found[3]}`;
+      const target = `${found[1]}${hostForRegkey}${found[3]}/regkey/${regkey}`;
       console.log("REDIRECTING TO ", target);
       res.redirect(target);
       return true;
@@ -499,7 +498,7 @@ app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
 Agent: ${encodeHashToBase64(cellId[1])}`;
     });
     const body = `
-    <div style="text-align:left">${apps.join("<br>")}</div>
+    <div style="text-align:left;overflow:auto;height:90%; width:90%;" class="card container">${apps.join("<br>")}</div>
 `;
     doSend(res, body);
     adminWebsocket.client.close();
