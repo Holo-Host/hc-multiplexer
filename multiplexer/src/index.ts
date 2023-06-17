@@ -289,7 +289,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
 
   try {
     const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await AdminWebsocket.connect(new URL(url));
 
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
@@ -319,7 +319,7 @@ const handleReg = async (regkey: string, req: Request, res: Response) => {
 
   try {
     const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await AdminWebsocket.connect(new URL(url));
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
     const appInfo = apps.find(
@@ -373,7 +373,7 @@ app.get("/gen/:count", async (req: Request, res: Response) => {
 
   try {
     const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await AdminWebsocket.connect(new URL(url));
     // const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
     //   a.installed_app_id.toLocaleLowerCase() <
     //   b.installed_app_id.toLocaleLowerCase()
@@ -462,7 +462,7 @@ Enjoy!
 app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-    const adminWebsocket = await AdminWebsocket.connect(url);
+    const adminWebsocket = await AdminWebsocket.connect(new URL(url));
     const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
       a.installed_app_id.toLocaleLowerCase() <
       b.installed_app_id.toLocaleLowerCase()
@@ -492,7 +492,7 @@ app.get("/", [
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-      const adminWebsocket = await AdminWebsocket.connect(url);
+      const adminWebsocket = await AdminWebsocket.connect(new URL(url));
       const cellIds = await adminWebsocket.listCellIds();
       adminWebsocket.client.close();
     } catch (e) {
@@ -608,7 +608,7 @@ app.get("/fail", async (req: Request, res: Response) => {
 
 try {
   const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-  const adminWebsocket = await AdminWebsocket.connect(url);
+  const adminWebsocket = await AdminWebsocket.connect(new URL(url));
   console.log(`Starting app interface on port ${APP_PORT_FOR_INTERFACE}`);
   await adminWebsocket.attachAppInterface({ port: APP_PORT_FOR_INTERFACE });
   adminWebsocket.client.close();
