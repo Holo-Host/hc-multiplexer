@@ -509,15 +509,6 @@ Agent: ${encodeHashToBase64(cellId[1])}`;
 
 app.get("/", [
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-      const adminWebsocket = await AdminWebsocket.connect(url);
-      const cellIds = await adminWebsocket.listCellIds();
-      adminWebsocket.client.close();
-    } catch (e) {
-      doError(res, e);
-      return;
-    }
     if (req.cookies["creds"]) {
       const creds = JSON.parse(req.cookies["creds"]);
       if (redirecting(creds.regkey, req, res)) {
