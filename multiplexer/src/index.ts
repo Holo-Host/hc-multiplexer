@@ -780,7 +780,7 @@ try {
   adminWebsocket.client.close();
 } catch (e) {
   // @ts-ignore
-  console.log(`Error attaching app interface: ${e.data.data}.`);
+  console.log(`Error attaching app interface: ${e.message}.`);
 }
 
 app.use("/", express.static(HAPP_UI_PATH));
