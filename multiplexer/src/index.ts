@@ -75,6 +75,7 @@ const APP_PORT_FOR_INTERFACE: number = parseInt(
 );
 
 const instanceForRegKey = (regkey: string): number => {
+  console.log("XXX", regkey, Buffer.from(regkey)[0], INSTANCE_COUNT)
   return (Buffer.from(regkey)[0] % INSTANCE_COUNT) + 1;
 };
 
@@ -434,6 +435,9 @@ const redirecting = (regkey: string, req: Request, res: Response): boolean => {
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
     const found = origin.match(/(.*)([0-9]+)(\..*\.*)/);
+    console.log("hostForRegkey", hostForRegkey)
+    console.log("found", found)
+
     if (found && parseInt(found[2]) != hostForRegkey) {
       const target = `${found[1]}${hostForRegkey}${found[3]}/regkey/${regkey}`;
       console.log("REDIRECTING TO ", target);
@@ -775,7 +779,8 @@ try {
   await adminWebsocket.attachAppInterface({ port: APP_PORT_FOR_INTERFACE });
   adminWebsocket.client.close();
 } catch (e) {
-  console.log(`Error attaching app interface: ${e}.`);
+  // @ts-ignore
+  console.log(`Error attaching app interface: ${e.data.data}.`);
 }
 
 app.use("/", express.static(HAPP_UI_PATH));
