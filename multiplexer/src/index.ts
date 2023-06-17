@@ -582,15 +582,36 @@ const doSend = (res: Response, body: string, code?: string) => {
   <html lang="en">
     <head>
       <meta charset="UTF-8" />
-  
 
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">      \
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Emergence Agent Setup</title>
       ${code? `<script>${code}</script>`:""}
       <style>
+
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-Regular.ttf');
+        font-weight: regular;
+      }
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-SemiBold.ttf');
+        font-weight: bold;
+      }
+      
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-Italic.ttf');
+        font-style: italic;
+      }
+      
+      @font-face {
+        font-family: "Poppins";
+        src: url('fonts/Poppins-SemiBoldItalic.ttf');
+        font-style: italic;
+        font-weight: bold;
+      }
+      
+
         html, body {
           font-family: "Poppins", sans-serif;
           font-size: 18px;
