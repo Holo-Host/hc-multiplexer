@@ -819,34 +819,34 @@ app.get("/fail", async (req: Request, res: Response) => {
 
 const REAL_WS_COUNT: number = 10
 
-const realWsAll: Set<WebSocket> = new Set()
-const realWsQueue: Array<WebSocket> = []
+const realWsAll: Array<Set<WebSocket>> = [...Array(CONDUCTOR_COUNT)].map(()=>new Set())
+const realWsQueue: Array<Array<WebSocket>> = [...Array(CONDUCTOR_COUNT)].map(()=>[])
 
-async function realWsGet(): Promise<WebSocket> {
-  while (realWsAll.size < REAL_WS_COUNT) {
-    const realWs = await realWsConnect()
-    realWsAll.add(realWs)
-    realWsQueue.unshift(realWs)
+async function realWsGet(conductor: number): Promise<WebSocket> {
+  while (realWsAll[conductor].size < REAL_WS_COUNT) {
+    const realWs = await realWsConnect(conductor)
+    realWsAll[conductor].add(realWs)
+    realWsQueue[conductor].unshift(realWs)
   }
-  const realWs = realWsQueue.shift()
+  const realWs = realWsQueue[conductor].shift()
   if (!realWs) {
     throw new Error('no real websockets available')
   }
-  realWsQueue.push(realWs)
+  realWsQueue[conductor].push(realWs)
   return realWs
 }
 
-function realWsDelete(realWs: WebSocket) {
-  realWsAll.delete(realWs)
-  realWsQueue.splice(0, realWsQueue.length)
-  for (const realWs of realWsAll.values()) {
-    realWsQueue.unshift(realWs)
+function realWsDelete(conductor:number, realWs: WebSocket) {
+  realWsAll[conductor].delete(realWs)
+  realWsQueue[conductor].splice(0, realWsQueue[conductor].length)
+  for (const realWs of realWsAll[conductor].values()) {
+    realWsQueue[conductor].unshift(realWs)
   }
 }
 
-let globWss: WebSocketServer | null = null
-const locWsAll: Set<WebSocket> = new Set()
-const reqReg: Map<number, WebSocket> = new Map()
+let globWss: Array<WebSocketServer | null> = [...Array(CONDUCTOR_COUNT)].map(()=>null)
+const locWsAll: Array<Set<WebSocket>> = [...Array(CONDUCTOR_COUNT)].map(()=>new Set())
+const reqReg: Array<Map<number, WebSocket>> = [...Array(CONDUCTOR_COUNT)].map(()=>new Map())
 
 function mparse(d: Buffer | ArrayBuffer | Buffer[]): { type: string, id: number } {
   const out = (d: { type: string, id: number }) => {
@@ -858,12 +858,16 @@ function mparse(d: Buffer | ArrayBuffer | Buffer[]): { type: string, id: number 
     return out(msgpack.decode(new Uint8Array(d)))
   } else {
     throw new Error("PANIC BAD BUF TYPE")
-  }
+  } 
 }
 
-async function realWsConnect(): Promise<WebSocket> {
+function realAppPortForInterface(conductor:number) {
+  return REAL_APP_PORT_FOR_INTERFACE
+}
+
+async function realWsConnect(conductor:number): Promise<WebSocket> {
   return await new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${REAL_APP_PORT_FOR_INTERFACE}`)
+    const ws = new WebSocket(`ws://127.0.0.1:${realAppPortForInterface(conductor)}`)
     ws.on('error', (err) => {
       console.error('FATAL!! REAL APP WEBSOCKET ERROR', err)
       reject(err)
@@ -877,12 +881,12 @@ async function realWsConnect(): Promise<WebSocket> {
     ws.on('message', (data, binary) => {
       const {type, id} = mparse(data)
       if (type === 'response') {
-        const socket = reqReg.get(id)
+        const socket = reqReg[conductor].get(id)
         if (socket) {
-          reqReg.delete(id)
+          reqReg[conductor].delete(id)
           socket.send(data, { binary: true }, (err) => {
             if (err) {
-              locWsAll.delete(socket)
+              locWsAll[conductor].delete(socket)
             }
           })
         }
@@ -891,10 +895,10 @@ async function realWsConnect(): Promise<WebSocket> {
         console.error('UNEXPECTED OUT REQUEST!!')
       } else {
         // must be a signal, send it to everyone
-        for (const locWs of locWsAll.values()) {
+        for (const locWs of locWsAll[conductor].values()) {
           locWs.send(data, { binary }, (err) => {
             if (err) {
-              locWsAll.delete(locWs)
+              locWsAll[conductor].delete(locWs)
             }
           })
         }
@@ -904,21 +908,24 @@ async function realWsConnect(): Promise<WebSocket> {
 }
 
 try {
-  try {
-    const adminWebsocket = await getAdminWebsocket();
-    console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
-    await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
-    //adminWebsocket.client.close();
-  } catch (e) {
-    // @ts-ignore
-    console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
-  }
+  // try {
+  //   const adminWebsocket = await getAdminWebsocket();
+  //   console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
+  //   await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
+  //   //adminWebsocket.client.close();
+  // } catch (e) {
+  //   // @ts-ignore
+  //   console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
+  // }
 
-  globWss = new WebSocketServer({
-    port: APP_PORT_FOR_INTERFACE
+  globWss = []
+  for (let i=0; i< CONDUCTOR_COUNT; i+=1) {
+  const wss = new WebSocketServer({
+    port: APP_PORT_FOR_INTERFACE+i
   })
-  globWss.on('connection', locWs => {
-    console.log(`INCOMING WS CONNECTION`)
+  globWss.push(wss)
+  wss.on('connection', locWs => {
+    console.log(`INCOMING WS CONNECTION FOR CONDUCTOR `, i)
     locWs.on('error', console.error.bind(console, 'pool-app-err'))
     locWs.on('message', (data, binary) => {
       const {type, id} = mparse(data)
@@ -926,28 +933,28 @@ try {
         // we don't respond to requests from hc
         console.error('UNEXPECTED IN RESPONSE!!')
       } else if (type === 'request') {
-        reqReg.set(id, locWs)
+        reqReg[i].set(id, locWs)
         // TODO - timeout
-        realWsGet().then(realWs => {
+        realWsGet(i).then(realWs => {
           realWs.send(data, { binary }, (err) => {
             if (err) {
-              realWsDelete(realWs)
+              realWsDelete(i,realWs)
             }
           })
         })
       } else {
         // who knows what this is??
-        realWsGet().then(realWs => {
+        realWsGet(i).then(realWs => {
           realWs.send(data, { binary }, (err) => {
             if (err) {
-              realWsDelete(realWs)
+              realWsDelete(i,realWs)
             }
           })
         })
       }
     })
-    locWsAll.add(locWs)
-  })
+    locWsAll[i].add(locWs)
+  })}
 } catch (e) {
   console.log(`Error attaching app interface: ${e}.`);
 }
