@@ -15,12 +15,11 @@ If the instance doesn't exist it:
 
 If the instance does exist it does steps 3 & 5 above.
 
-For this system to work, it also requires a reverse proxy setup to make public this web-server AND route websocket connections to the locally running conductor.  A sample reverse proxy config for nginx can be found [here](00-reverse-proxy.conf)
+For this system to work, it also requires a reverse proxy setup to make public this web-server AND route websocket connections to the locally running conductor.  A sample reverse proxy config for caddy can be found [here](Caddyfile)
 
 ## Dev testing:
 
 ### Setup
-
 1. Install lair-keystore-cli at branch `lair-keystore-cli` using:
 ```
 git clone https://github.com/holochain/lair.git
@@ -32,13 +31,13 @@ which lair-keystore-cli
 ```
 Add the binary path shown to LAIR_CLI_PATH in step 3
 
-2. Compile and package your happ and UI files (usually `npm run package`)
+2. Install emergence: and `npm i` `npm run package`
 
 3. Create a `multiplexer/.env` file with:
 ```
-HAPP_UI_PATH="/path/to/your-app/ui/dist"
-HAPP_PATH="/path/to/your-app.happ"
-WEBHAPP_PATH="/path/to/your-app.webhapp"
+HAPP_UI_PATH="/path/to/emergence/ui/dist"
+HAPP_PATH="/path/to/emergence/workdir/emergence.happ"
+WEBHAPP_PATH="/path/to/emergence/workdir/emergence.webhapp"
 CONDUCTOR_CONFIG_PATH="" #default is get this from the .hc file created by `hc s g`
 LAIR_CLI_PATH="/path/to/bin/lair-keystore-cli"
 INSTANCE_COUNT="1"
@@ -46,20 +45,31 @@ APP_PATH_FOR_CLIENT="appWebsocket"
 NETWORK_SEED="some-unique-value"
 ```
 
-3. Run:
+4. install caddy  with:
+```
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install caddy
+```
+ copy Caddyfile from hc-multiplexer to `/etc/caddy` 
+
+copy the pem files into /var/lib/secrets/infra.holochain.org
+
+5. chown the pem files to `caddy:caddy`
+
+6. restart caddy with `systemctl restart caddy`
+
+7. add a host:` mydweb1.infra.holochain.org  127.0.0.1` to your `/etc/hosts/` file 
+
+8. Run:
 ```
 cd multiplexer
 npm i
 npm run dev
 ```
-
-To test using the reverse proxy:
-
-1. create a domain name that points to your local IP address (yes this is werid!)
-2. install caddy and copy [this config file](Caddyfile) to `/etc/caddy` editing the domain name to match what you have set up.
-3. Edit the `INSTANCE_COUNT` and `APP_PATH_FOR_CLIENT` items of the `.env` file to match your node count and path.
-
-On a local network this should work without installing any SSL certs.
+Then you should be able to go to `mydweb1.infra.holochain.org` locally
 
 
 ## Live Setup
@@ -68,10 +78,10 @@ On a local network this should work without installing any SSL certs.
    - holochain
    - lair
    - caddy
-2. put the app's `.happ` file and ui someplace on the system.
-3. configure nignx with [this config file](Caddyfile) in `/etc/caddy` editing the domain name to match what you have set up.
-4. Create a `.env` file as above
-5. ensure that holochain's config accepts app port websocket requests that match your UI (3030 for emergence) and that the nginx reverse proxy support is proxying from that port.
+2. put the app's `.happ` `.webhapp` and `ui/dist` someplace on the system.
+3. configure caddy with [this config file](Caddyfile) in `/etc/caddy` editing the domain name to match what you have set up.
+4. make sure `pem` files for your cert are in the right place as indicated by the caddy file.
+5. Create a `.env` file similar to above
 6. ensure that your server spins up the node server `npm run start`
 
 
