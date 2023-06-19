@@ -41,25 +41,23 @@ const myExec = (cmd: string) => {
   return output;
 };
 
-const configPathFromDotHC = () => {
+const dotHCpath = (conductor:number ) => {
   let data = fs.readFileSync(".hc", "utf8");
-  data = data.substring(0, data.length - 1);
+  const dirs = data.substring(0, data.length - 1).split(/\n/)
+  return dirs[conductor]
+};
 
+const configPathFromDotHC = (conductor:number) => {
+  const data = dotHCpath(conductor)
   return `${data}/conductor-config.yaml`;
 };
 
-const CONDUCTOR_CONFIG_PATH =
-  process.env.CONDUCTOR_CONFIG_PATH || configPathFromDotHC();
-const CONDUCTOR_CONFIG = fs.readFileSync(CONDUCTOR_CONFIG_PATH, "utf8");
-const adminPortFromConfig = () => {
-  const result = CONDUCTOR_CONFIG.match(
-    /driver:\W+type: websocket\W+port: ([0-9]+)/m
-  );
-  if (!result) throw "Unable to find admin port in config";
-  return result[1];
+const lairWorkdirPathFromDotHC = (conductor:number) => {
+  const data = dotHCpath(conductor)
+  return `${data}/keystore`;
 };
+
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-const HC_ADMIN_PORT = process.env.HC_ADMIN_PORT || adminPortFromConfig();
 const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./";
 const HAPP_PATH = process.env.HAPP_PATH || "";
 const WEBHAPP_PATH = process.env.WEBHAPP_PATH || "";
@@ -80,18 +78,34 @@ const APP_PORT_FOR_INTERFACE: number = parseInt(
   process.env.APP_PORT_FOR_INTERFACE || "3030"
 );
 
+const HC_ADMIN_PORTS:Array<number> = []
+for (let i=0;i< CONDUCTOR_COUNT; i+= 1) {
+  const configPath = configPathFromDotHC(i)
+  const config = fs.readFileSync(configPath, "utf8");
+  const result = config.match(
+    /driver:\W+type: websocket\W+port: ([0-9]+)/m
+  );
+  if (!result) throw "Unable to find admin port in config";
+  console.log(`Conductor ${i} on admin port ${result[1]}`)
+  HC_ADMIN_PORTS[i]=parseInt(result[1])
+}
+
 const instanceForRegKey = (regkey: string): number => {
   return (Buffer.from(regkey)[0] % INSTANCE_COUNT) + 1;
 };
 
 const conductorForRegKey = (regkey: string): number => {
-  return (Buffer.from(regkey)[1] % INSTANCE_COUNT) + 1;
+  return (Buffer.from(regkey)[1] % CONDUCTOR_COUNT);
 };
 
-const getLairSocket = () => {
-  // prefer getting the url from lair-keystore directly
-  if (process.env.LAIR_PATH && process.env.LAIR_WORKING_DIRECTORY) {
-    const cmd = `${process.env.LAIR_PATH} --lair-root ${process.env.LAIR_WORKING_DIRECTORY} url`;
+const lairBin = process.env.LAIR_PATH
+
+const getLairSocket = (conductor:number) => {
+
+  const lairRoot = process.env.LAIR_WORKING_DIRECTORY || lairWorkdirPathFromDotHC (conductor)
+    // prefer getting the url from lair-keystore directly
+  if (lairBin && lairRoot) {
+    const cmd = `${lairBin} --lair-root ${lairRoot} url`;
 
     try {
       const output = myExec(cmd);
@@ -100,26 +114,23 @@ const getLairSocket = () => {
       console.log("Error when while attempting to read lair-keystore url: ", e);
     }
   }
-
-  // fallback to parsing the conductor config
-  const result = CONDUCTOR_CONFIG.match(/.*connection_url: (.*)/);
-  if (!result) throw "Unable to find connectuion URL";
-  return result[1];
 };
 
-const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-let globalAdminWebsocket: AdminWebsocket
 
-async function createAdminWebsocket() {
-  globalAdminWebsocket = await AdminWebsocket.connect(new URL(url))
+let globalAdminWebsockets: Array<AdminWebsocket> = []
+
+
+async function createAdminWebsocket(conductor: number) {
+  const url = `ws://127.0.0.1:${HC_ADMIN_PORTS[conductor]}`;
+  globalAdminWebsockets[conductor] = await AdminWebsocket.connect(new URL(url))
   console.log("connected to admin port at: ", url)
 }
 
-async function getAdminWebsocket() : Promise<AdminWebsocket> {
-  if (!globalAdminWebsocket) {
-    await createAdminWebsocket()
+async function getAdminWebsocket(conductor: number) : Promise<AdminWebsocket> {
+  if (!globalAdminWebsockets[conductor]) {
+    await createAdminWebsocket(conductor)
   }
-  return globalAdminWebsocket
+  return globalAdminWebsockets[conductor]
 }
 
 const uint8ToBase64 = (arr: Uint8Array) => Buffer.from(arr).toString("base64");
@@ -151,11 +162,11 @@ const deriveSigningKeys = async (
   return [{ privateKey, publicKey }, signingKey];
 };
 
-const credsToJson = (creds: SigningCredentials, installed_app_id: string, regkey: string) => {
+const credsToJson = (conductor:number, creds: SigningCredentials, installed_app_id: string, regkey: string) => {
   return JSON.stringify({
     installed_app_id,
     regkey,
-    appPath: APP_PATH_FOR_CLIENT,
+    appPath:  `${APP_PATH_FOR_CLIENT}${conductor}`,
     creds: {
       capSecret: uint8ToBase64(creds.capSecret),
       keyPair: {
@@ -185,8 +196,8 @@ const hash32ToAgentPubKey = (pubKey32: Buffer): AgentPubKey => {
   return pubKey;
 };
 
-const makeKey = async (adminWebsocket: AdminWebsocket, seedStr: string) => {
-  const cmd = `echo "pass" | ${LAIR_CLI_PATH} import-seed-string "${getLairSocket()}" "${seedStr}"`;
+const makeKey = async (conductor:number, adminWebsocket: AdminWebsocket, seedStr: string) => {
+  const cmd = `echo "pass" | ${LAIR_CLI_PATH} import-seed-string "${getLairSocket(conductor)}" "${seedStr}"`;
 
   // try {
   const output = myExec(cmd);
@@ -228,7 +239,6 @@ const grantUIPassword = async (
   });
 };
 
-
 const genCredsForPass = async (
   regkey: string,
   password: string
@@ -252,9 +262,8 @@ const genCredsForPass = async (
   return creds
 }
 
-
-
 const setCredsForPass = async (
+  conductor: number,
   regkey: string,
   password: string,
   installed_app_id: string,
@@ -262,7 +271,7 @@ const setCredsForPass = async (
 ) => {
   const creds = await genCredsForPass(regkey, password)
 
-  const credsJSON = credsToJson(creds, installed_app_id, regkey);
+  const credsJSON = credsToJson(conductor, creds, installed_app_id, regkey);
   res.cookie("creds", credsJSON);
   res.redirect("/");
 };
@@ -271,9 +280,10 @@ const installedAppId = (regKey: string) => {
   return `emergence-${regKey}`;
 };
 
-const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, password:string) => {
+const installAgent = async (conductor:number, adminWebsocket :AdminWebsocket, regkey: string, password:string) => {
   const installed_app_id = installedAppId(regkey);
   const agent_key = await makeKey(
+    conductor,
     adminWebsocket,
     `${password}-${regkey}`
   );
@@ -287,7 +297,7 @@ const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, pass
     },30000);
     await adminWebsocket.enableApp({ installed_app_id });
 
-    console.log("installing", regkey, appInfo);
+    console.log(`installing on conductor ${conductor}:`, regkey, appInfo);
     // @ts-ignore
     const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"];
 
@@ -307,12 +317,13 @@ const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, pass
 
 app.post("/regkey/:key", async (req: Request, res: Response) => {
   const regkey = req.params.key;
-  if (redirecting(regkey, req, res)) {
+  const conductor = redirecting(regkey, req, res)
+  if (conductor < 0) {
     return;
   }
 
   try {
-    const adminWebsocket = await getAdminWebsocket()
+    const adminWebsocket = await getAdminWebsocket(conductor)
 
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
@@ -321,9 +332,10 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
     );
 
     if (!appInfo) {
-      await installAgent(adminWebsocket, regkey, req.body.password)
+      await installAgent(conductor, adminWebsocket, regkey, req.body.password)
     }
     await setCredsForPass(
+      conductor,
       regkey,
       req.body.password,
       installed_app_id,
@@ -336,12 +348,12 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
 });
 
 const handleReg = async (regkey: string, req: Request, res: Response) => {
-  if (redirecting(regkey, req, res)) {
+  const conductor = redirecting(regkey, req, res)
+  if (conductor < 0) {
     return;
   }
-
   try {
-    const adminWebsocket = await getAdminWebsocket()
+    const adminWebsocket = await getAdminWebsocket(conductor)
     const apps = await adminWebsocket.listApps({});
     const installed_app_id = installedAppId(regkey);
     const appInfo = apps.find(
@@ -411,32 +423,6 @@ pass2.addEventListener("input",checkpass)
   }
 };
 
-app.get("/gen/:count", async (req: Request, res: Response) => {
-  const count = parseInt(req.params.count)
-
-  try {
-    const adminWebsocket = await getAdminWebsocket()
-
-    // const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
-    //   a.installed_app_id.toLocaleLowerCase() <
-    //   b.installed_app_id.toLocaleLowerCase()
-    //     ? -1
-    //     : 1
-    // );
-    for (let i=1; i<= count; i+=1) {
-      await installAgent(adminWebsocket, `agent${i}`, `${i}`)
-    }
-    const body = `
-    <h3>generated ${count} instances
-`;
-    doSend(res, body);
-    //adminWebsocket.client.close();
-  } catch (e) {
-    doError(res, e);
-    return;
-  }
-});
-
 app.get("/regkey", async (req: Request, res: Response) => {
   res.redirect("/");
 });
@@ -449,11 +435,7 @@ app.get("/regkey/:key", async (req: Request, res: Response) => {
   await handleReg(req.params.key, req, res);
 });
 
-// const happ = function (_req: Request, res: Response) {
-//   res.sendFile(path.join(__dirname, '/index.html'));
-// }
-
-const redirecting = (regkey: string, req: Request, res: Response): boolean => {
+const redirecting = (regkey: string, req: Request, res: Response): number => {
   const origin = req.headers.origin;
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
@@ -462,10 +444,10 @@ const redirecting = (regkey: string, req: Request, res: Response): boolean => {
       const target = `${found[1]}${hostForRegkey}${found[3]}/regkey/${regkey}`;
       console.log("REDIRECTING TO ", target);
       res.redirect(target);
-      return true;
+      return -1;
     }
   }
-  return false;
+  return conductorForRegKey(regkey);
 };
 app.get("/emergence.webhapp", async (req: Request, res: Response) => {
   res.sendFile(WEBHAPP_PATH);
@@ -503,9 +485,10 @@ app.get("/install", async (req: Request, res: Response) => {
   );
 });
 
-app.get("/info", async (req: Request, res: Response, next: NextFunction) => {
+app.get("/info/:conductor", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const adminWebsocket = await getAdminWebsocket();
+    const conductor = parseInt(req.params.conductor)
+    const adminWebsocket = await getAdminWebsocket(conductor);
     const appsRaw = (await adminWebsocket.listApps({})).sort((a, b) =>
       a.installed_app_id.toLocaleLowerCase() <
       b.installed_app_id.toLocaleLowerCase()
@@ -529,13 +512,14 @@ Agent: ${encodeHashToBase64(cellId[1])}`;
     doError(res, e);
     return;
   }
-});
+});redirecting
 
 app.get("/", [
   async (req: Request, res: Response, next: NextFunction) => {
     if (req.cookies["creds"]) {
       const creds = JSON.parse(req.cookies["creds"]);
-      if (redirecting(creds.regkey, req, res)) {
+      const conductor = redirecting(creds.regkey, req, res)
+      if (conductor < 0) {
         return;
       }
 
@@ -586,7 +570,7 @@ document.getElementById("regkey").addEventListener("input", (e)=>{
 
 const doError = (res: Response, err: any) => {
   if (err.message == "Socket is not open") {
-    createAdminWebsocket()
+    //createAdminWebsocket()
   }
   doSend(
     res,
@@ -862,7 +846,7 @@ function mparse(d: Buffer | ArrayBuffer | Buffer[]): { type: string, id: number 
 }
 
 function realAppPortForInterface(conductor:number) {
-  return REAL_APP_PORT_FOR_INTERFACE
+  return REAL_APP_PORT_FOR_INTERFACE+conductor
 }
 
 async function realWsConnect(conductor:number): Promise<WebSocket> {
@@ -907,23 +891,11 @@ async function realWsConnect(conductor:number): Promise<WebSocket> {
   })
 }
 
-try {
-  // try {
-  //   const adminWebsocket = await getAdminWebsocket();
-  //   console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
-  //   await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
-  //   //adminWebsocket.client.close();
-  // } catch (e) {
-  //   // @ts-ignore
-  //   console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
-  // }
-
-  globWss = []
-  for (let i=0; i< CONDUCTOR_COUNT; i+=1) {
+function makeWsServer(i:number) : WebSocketServer {
   const wss = new WebSocketServer({
     port: APP_PORT_FOR_INTERFACE+i
   })
-  globWss.push(wss)
+  
   wss.on('connection', locWs => {
     console.log(`INCOMING WS CONNECTION FOR CONDUCTOR `, i)
     locWs.on('error', console.error.bind(console, 'pool-app-err'))
@@ -954,7 +926,25 @@ try {
       }
     })
     locWsAll[i].add(locWs)
-  })}
+  })
+  return wss
+}
+
+try {
+  // try {
+  //   const adminWebsocket = await getAdminWebsocket();
+  //   console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
+  //   await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
+  //   //adminWebsocket.client.close();
+  // } catch (e) {
+  //   // @ts-ignore
+  //   console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
+  // }
+
+  globWss = []
+  for (let i=0; i< CONDUCTOR_COUNT; i+=1) {
+    globWss.push(makeWsServer(i))
+  }
 } catch (e) {
   console.log(`Error attaching app interface: ${e}.`);
 }
