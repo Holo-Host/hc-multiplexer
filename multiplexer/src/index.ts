@@ -224,6 +224,16 @@ const grantUIPassword = async (
   });
 };
 
+const hexHash = async (text: string): Promise<string> => {
+  const interim = Buffer.from([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
+  ]);
+  const hash = await blake2b(interim.length)
+    .update(Buffer.from(text))
+    .digest("hex");
+  return hash
+}
 
 const genCredsForPass = async (
   regkey: string,
@@ -256,7 +266,7 @@ const setCredsForPass = async (
   installed_app_id: string,
   res: Response,
 ) => {
-  const creds = await genCredsForPass(regkey, password)
+  const creds = await genCredsForPass(regkey, await hexHash(password))
 
   const credsJSON = credsToJson(creds, installed_app_id, regkey);
   res.cookie("creds", credsJSON);
@@ -267,11 +277,11 @@ const installedAppId = (regKey: string) => {
   return `emergence-${regKey}`;
 };
 
-const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, password:string) => {
+const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, passwordHash:string) => {
   const installed_app_id = installedAppId(regkey);
   const agent_key = await makeKey(
     adminWebsocket,
-    `${password}-${regkey}`
+    `${regkey}-${passwordHash}`
   );
   if (agent_key) {
     const appInfo = await adminWebsocket.installApp({
@@ -287,7 +297,7 @@ const installAgent = async (adminWebsocket :AdminWebsocket, regkey: string, pass
     // @ts-ignore
     const { cell_id } = appInfo.cell_info["emergence"][0]["provisioned"];
 
-    const creds = await genCredsForPass(regkey, password)
+    const creds = await genCredsForPass(regkey, passwordHash)
 
     await grantUIPassword(
       adminWebsocket,
@@ -317,7 +327,7 @@ app.post("/regkey/:key", async (req: Request, res: Response) => {
     );
 
     if (!appInfo) {
-      await installAgent(adminWebsocket, regkey, req.body.password)
+      await installAgent(adminWebsocket, regkey, await hexHash(req.body.password))
     }
     await setCredsForPass(
       regkey,
@@ -420,7 +430,7 @@ app.get("/gen/:count", async (req: Request, res: Response) => {
     //     : 1
     // );
     for (let i=1; i<= count; i+=1) {
-      await installAgent(adminWebsocket, `agent${i}`, `${i}`)
+      await installAgent(adminWebsocket, `agent${i}`, await hexHash(`${i}`))
     }
     const body = `
     <h3>generated ${count} instances
