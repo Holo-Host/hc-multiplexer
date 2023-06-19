@@ -69,8 +69,8 @@ const NETWORK_SEED = process.env.NETWORK_SEED || "";
 const INSTANCE_COUNT = parseInt(
   process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1"
 );
-const MY_INSTANCE_NUM = parseInt(
-  process.env.MY_INSTANCE_NUM ? process.env.MY_INSTANCE_NUM : "1"
+const CONDUCTOR_COUNT = parseInt(
+  process.env.CONDUCTOR_COUNT ? process.env.CONDUCTOR_COUNT : "1"
 );
 const APP_PATH_FOR_CLIENT = process.env.APP_PATH_FOR_CLIENT || "appwebsocket";
 const REAL_APP_PORT_FOR_INTERFACE: number = parseInt(
@@ -82,6 +82,10 @@ const APP_PORT_FOR_INTERFACE: number = parseInt(
 
 const instanceForRegKey = (regkey: string): number => {
   return (Buffer.from(regkey)[0] % INSTANCE_COUNT) + 1;
+};
+
+const conductorForRegKey = (regkey: string): number => {
+  return (Buffer.from(regkey)[1] % INSTANCE_COUNT) + 1;
 };
 
 const getLairSocket = () => {
