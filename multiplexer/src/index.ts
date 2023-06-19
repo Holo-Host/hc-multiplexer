@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import msgpack from 'msgpack-lite'
+import { WebSocket, WebSocketServer } from 'ws';
 import express, { Application, Request, Response, NextFunction } from "express";
 import {
   AdminWebsocket,
@@ -70,6 +72,9 @@ const MY_INSTANCE_NUM = parseInt(
   process.env.MY_INSTANCE_NUM ? process.env.MY_INSTANCE_NUM : "1"
 );
 const APP_PATH_FOR_CLIENT = process.env.APP_PATH_FOR_CLIENT || "appwebsocket";
+const REAL_APP_PORT_FOR_INTERFACE: number = parseInt(
+  process.env.REAL_APP_PORT_FOR_INTERFACE || "30030"
+);
 const APP_PORT_FOR_INTERFACE: number = parseInt(
   process.env.APP_PORT_FOR_INTERFACE || "3030"
 );
@@ -96,6 +101,21 @@ const getLairSocket = () => {
   if (!result) throw "Unable to find connectuion URL";
   return result[1];
 };
+
+const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
+let globalAdminWebsocket: AdminWebsocket
+
+async function createAdminWebsocket() {
+  globalAdminWebsocket = await AdminWebsocket.connect(url)
+  console.log("connected to admin port at: ", url)
+}
+
+async function getAdminWebsocket() : Promise<AdminWebsocket> {
+  if (!globalAdminWebsocket) {
+    await createAdminWebsocket()
+  }
+  return globalAdminWebsocket
+}
 
 const uint8ToBase64 = (arr: Uint8Array) => Buffer.from(arr).toString("base64");
 const base64ToUint8 = (b64: string) =>
@@ -792,6 +812,141 @@ app.get("/fail", async (req: Request, res: Response) => {
 //   console.log("error starting holochian:", e )
 // }
 
+const REAL_WS_COUNT: number = 10
+
+const realWsAll: Set<WebSocket> = new Set()
+const realWsQueue: Array<WebSocket> = []
+
+async function realWsGet(): Promise<WebSocket> {
+  while (realWsAll.size < REAL_WS_COUNT) {
+    const realWs = await realWsConnect()
+    realWsAll.add(realWs)
+    realWsQueue.unshift(realWs)
+  }
+  const realWs = realWsQueue.shift()
+  if (!realWs) {
+    throw new Error('no real websockets available')
+  }
+  realWsQueue.push(realWs)
+  return realWs
+}
+
+function realWsDelete(realWs: WebSocket) {
+  realWsAll.delete(realWs)
+  realWsQueue.splice(0, realWsQueue.length)
+  for (const realWs of realWsAll.values()) {
+    realWsQueue.unshift(realWs)
+  }
+}
+
+let globWss: WebSocketServer | null = null
+const locWsAll: Set<WebSocket> = new Set()
+const reqReg: Map<number, WebSocket> = new Map()
+
+function mparse(d: Buffer | ArrayBuffer | Buffer[]): { type: string, id: number } {
+  const out = (d: { type: string, id: number }) => {
+    return { type: d.type, id: d.id }
+  }
+  if (d instanceof Uint8Array) {
+    return out(msgpack.decode(d))
+  } else if (d instanceof ArrayBuffer) {
+    return out(msgpack.decode(new Uint8Array(d)))
+  } else {
+    throw new Error("PANIC BAD BUF TYPE")
+  }
+}
+
+async function realWsConnect(): Promise<WebSocket> {
+  return await new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${REAL_APP_PORT_FOR_INTERFACE}`)
+    ws.on('error', (err) => {
+      console.error('FATAL!! REAL APP WEBSOCKET ERROR', err)
+      reject(err)
+    })
+    ws.on('close', () => {
+      console.error('FATAL!! REAL APP WEBSOCKET CLOSED')
+    })
+    ws.on('open', () => {
+      resolve(ws)
+    })
+    ws.on('message', (data, binary) => {
+      const {type, id} = mparse(data)
+      if (type === 'response') {
+        const socket = reqReg.get(id)
+        if (socket) {
+          reqReg.delete(id)
+          socket.send(data, { binary: true }, (err) => {
+            if (err) {
+              locWsAll.delete(socket)
+            }
+          })
+        }
+      } else if (type === 'request') {
+        // we don't make out requests
+        console.error('UNEXPECTED OUT REQUEST!!')
+      } else {
+        // must be a signal, send it to everyone
+        for (const locWs of locWsAll.values()) {
+          locWs.send(data, { binary }, (err) => {
+            if (err) {
+              locWsAll.delete(locWs)
+            }
+          })
+        }
+      }
+    })
+  })
+}
+
+try {
+  try {
+    const adminWebsocket = await getAdminWebsocket();
+    console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
+    await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
+    //adminWebsocket.client.close();
+  } catch (e) {
+    // @ts-ignore
+    console.log(`Error attaching app interface: ${e}.`); // .data ? e.data.data : e.message
+  }
+
+  globWss = new WebSocketServer({
+    port: APP_PORT_FOR_INTERFACE
+  })
+  globWss.on('connection', locWs => {
+    console.log(`INCOMING WS CONNECTION`)
+    locWs.on('error', console.error.bind(console, 'pool-app-err'))
+    locWs.on('message', (data, binary) => {
+      const {type, id} = mparse(data)
+      if (type === 'response') {
+        // we don't respond to requests from hc
+        console.error('UNEXPECTED IN RESPONSE!!')
+      } else if (type === 'request') {
+        reqReg.set(id, locWs)
+        // TODO - timeout
+        realWsGet().then(realWs => {
+          realWs.send(data, { binary }, (err) => {
+            if (err) {
+              realWsDelete(realWs)
+            }
+          })
+        })
+      } else {
+        // who knows what this is??
+        realWsGet().then(realWs => {
+          realWs.send(data, { binary }, (err) => {
+            if (err) {
+              realWsDelete(realWs)
+            }
+          })
+        })
+      }
+    })
+    locWsAll.add(locWs)
+  })
+} catch (e) {
+  console.log(`Error attaching app interface: ${e}.`);
+}
+
 app.use("/", express.static(HAPP_UI_PATH));
 
 app.get("/reset", (req: Request, res: Response): void => {
@@ -801,28 +956,3 @@ app.get("/reset", (req: Request, res: Response): void => {
 app.listen(PORT, "0.0.0.0", (): void => {
   console.log("SERVER IS UP ON PORT:", PORT);
 });
-
-const url = `ws://127.0.0.1:${HC_ADMIN_PORT}`;
-let globalAdminWebsocket: AdminWebsocket
-
-const createAdminWebsocket = async () => {
-  globalAdminWebsocket = await AdminWebsocket.connect(url)
-  console.log("connected to admin port at: ", url)
-}
-
-const getAdminWebsocket = async () : Promise<AdminWebsocket> => {
-  if (!globalAdminWebsocket) {
-    await createAdminWebsocket()
-  }
-  return globalAdminWebsocket
-}
-
-getAdminWebsocket().then(adminWebsocket=>{
-    console.log(`Starting app interface on port ${APP_PORT_FOR_INTERFACE}`);
-    adminWebsocket.attachAppInterface({ port: APP_PORT_FOR_INTERFACE }).catch(e=> {
-        console.log(`Error attaching app interface: ${e.data ? e.data.data : e.message}.`);
-    })
-  }).catch (e => {
-  // @ts-ignore
-  console.log(`Error getting admin websocket: ${e.message}.`);
-})
