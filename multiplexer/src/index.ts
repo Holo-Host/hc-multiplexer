@@ -416,6 +416,53 @@ pass2.addEventListener("input",checkpass)
     doError(res, e);
   }
 };
+app.get("/gen", async (req: Request, res: Response) => {
+  doSend(res, `
+  <div class="container">
+  <div class="block">
+      <h3>Gen Agents</h3>
+  </div>
+  <div class="block">
+    <div class="card">
+    <span class="cta-prompt">Enter comma separated seeds</span>
+        <form action="/gen" method="post">
+          <textarea cols=70 id="seeds" class="textarea" type="input" name="seeds" autofocus></textarea>
+          <input disabled id="submit" class="submit-button disabled" type="submit" name="submit" value="Generate Agents"></input>
+        </form>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById("seeds").addEventListener("input", (e)=>{
+const button = document.getElementById("submit")
+if (!e.target.value) {
+  button.disabled = true
+  button.classList.add("disabled")
+} else {
+  button.disabled = false
+  button.classList.remove("disabled")
+}
+});
+</script>
+  `)
+})
+app.post("/gen", async (req: Request, res: Response) => {
+  try {
+    const seeds = req.body.seeds.split(/[^0-9a-f-]+/)
+    const adminWebsocket = await getAdminWebsocket()
+    for (const s of seeds) {
+      const [regKey,passwordHash] = s.split("-")
+      console
+      await installAgent(adminWebsocket,regKey,passwordHash)
+    }
+    doSend(res,`
+    generated
+    `)
+  } catch(e) {
+    doError(res, e);
+    return;
+  }
+})
 
 app.get("/gen/:count", async (req: Request, res: Response) => {
   const count = parseInt(req.params.count)
@@ -728,6 +775,13 @@ const doSend = (res: Response, body: string, code?: string) => {
           width: auto;
           text-align: center;
           height: 40px;
+        }
+
+        .textarea {
+          font-size: 12px; padding: 8px 12px; border-radius: 3px; border: 1px solid rgba(86, 92, 109, .3);
+          width: auto;
+          text-align: left;
+          height: 89px;
         }
 
         .regkey.input, .password.input {
