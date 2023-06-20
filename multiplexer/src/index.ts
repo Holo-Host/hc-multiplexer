@@ -601,7 +601,7 @@ app.get("/", [
 <script>
 document.getElementById("regkey").addEventListener("input", (e)=>{
   const button = document.getElementById("submit")
-  if (!e.target.value || e.target.value.length <2) {
+  if (!e.target.value) {
     button.disabled = true
     button.classList.add("disabled")
   } else {
