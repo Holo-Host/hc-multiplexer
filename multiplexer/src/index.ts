@@ -553,7 +553,7 @@ app.get("/", [
 <script>
 document.getElementById("regkey").addEventListener("input", (e)=>{
   const button = document.getElementById("submit")
-  if (!e.target.value) {
+  if (!e.target.value || e.target.value.length <2) {
     button.disabled = true
     button.classList.add("disabled")
   } else {
@@ -931,15 +931,16 @@ function makeWsServer(i:number) : WebSocketServer {
 }
 
 try {
-  // try {
-  //   const adminWebsocket = await getAdminWebsocket();
-  //   console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
-  //   await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
-  //   //adminWebsocket.client.close();
-  // } catch (e) {
-  //   // @ts-ignore
-  //   console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
-  // }
+  try {
+    for (let i=0; i< CONDUCTOR_COUNT; i+=1) {
+      const adminWebsocket = await getAdminWebsocket(i);
+      console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE+i}`);
+      await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE+i });
+    }
+  } catch (e) {
+    // @ts-ignore
+    console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
+  }
 
   globWss = []
   for (let i=0; i< CONDUCTOR_COUNT; i+=1) {
