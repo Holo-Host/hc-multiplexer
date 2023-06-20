@@ -131,6 +131,7 @@ const getLairRootFromEnv = (conductor: number): string => {
 const getLairSocket = (conductor: number) => {
   const lairRoot =
     getLairRootFromEnv(conductor) || lairWorkdirPathFromDotHC(conductor);
+
   // prefer getting the url from lair-keystore directly
   if (lairBin && lairRoot) {
     const cmd = `${lairBin} --lair-root ${lairRoot} url`;
@@ -992,23 +993,23 @@ function makeWsServer(i: number): WebSocketServer {
   return wss;
 }
 
-try {
-  // try {
-  //   const adminWebsocket = await getAdminWebsocket();
-  //   console.log(`Starting app interface on port ${REAL_APP_PORT_FOR_INTERFACE}`);
-  //   await adminWebsocket.attachAppInterface({ port: REAL_APP_PORT_FOR_INTERFACE });
-  //   //adminWebsocket.client.close();
-  // } catch (e) {
-  //   // @ts-ignore
-  //   console.log(`Error attaching app interface: ${e.message}.`); // .data ? e.data.data : e.message
-  // }
-
-  globWss = [];
-  for (let i = 0; i < CONDUCTOR_COUNT; i += 1) {
+globWss = [];
+for (let i = 0; i < CONDUCTOR_COUNT; i += 1) {
+  try {
     globWss.push(makeWsServer(i));
+  } catch (e: any) {
+    console.log(`Error making WsServer: ${e.message}.`);
   }
-} catch (e) {
-  console.log(`Error attaching app interface: ${e}.`);
+
+  try {
+    const adminWebsocket = await getAdminWebsocket(i);
+    console.log(`Starting app interface on port ${realAppPortForInterface(i)}`);
+    await adminWebsocket.attachAppInterface({
+      port: realAppPortForInterface(i),
+    });
+  } catch (e: any) {
+    console.log(`Error attaching app interface: ${e.message}.`);
+  }
 }
 
 app.use("/", express.static(HAPP_UI_PATH));
