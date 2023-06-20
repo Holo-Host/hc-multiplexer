@@ -601,7 +601,7 @@ app.get("/", [
 <script>
 document.getElementById("regkey").addEventListener("input", (e)=>{
   const button = document.getElementById("submit")
-  if (!e.target.value) {
+  if (!e.target.value || e.target.value.length <2) {
     button.disabled = true
     button.classList.add("disabled")
   } else {
@@ -999,6 +999,7 @@ for (let i = 0; i < CONDUCTOR_COUNT; i += 1) {
     globWss.push(makeWsServer(i));
   } catch (e: any) {
     console.log(`Error making WsServer: ${e.message}.`);
+
   }
 
   try {
