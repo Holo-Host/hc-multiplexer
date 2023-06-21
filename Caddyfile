@@ -9,7 +9,7 @@
 # domain name.
 
 {
-	auto_https off
+#	auto_https on
 
 	acme_ca https://acme-v02.api.letsencrypt.org/directory
 	log {
@@ -23,22 +23,23 @@
 		output file /var/log/caddy/access-:443.log
 	}
 
-	tls /var/lib/secrets/infra.holochain.org/cert.pem /var/lib/secrets/infra.holochain.org/key.pem
-	reverse_proxy /appWebsocket http://127.0.0.1:3030
+	#tls /var/lib/secrets/infra.holochain.org/cert.pem /var/lib/secrets/infra.holochain.org/key.pem
+	tls /var/lib/secrets/dweb.city.pem /var/lib/secrets/dweb.city.key
 	reverse_proxy http://127.0.0.1:3000
+	reverse_proxy /appWebsocket0 http://127.0.0.1:3030
+	reverse_proxy /appWebsocket1 http://127.0.0.1:3031
+	reverse_proxy /appWebsocket2 http://127.0.0.1:3032
+	reverse_proxy /appWebsocket3 http://127.0.0.1:3033
 }
 
-:80 {
-	bind
+#:80 {
+#	bind
+#
+#	log {
+#		output file /var/log/caddy/access-:80.log
+#	}
+#
+#	reverse_proxy /appWebsocket http://127.0.0.1:3030
+#	reverse_proxy http://127.0.0.1:3000
+#}
 
-	log {
-		output file /var/log/caddy/access-:80.log
-	}
-
-	reverse_proxy /appWebsocket http://127.0.0.1:3030
-	reverse_proxy http://127.0.0.1:3000
-}
-
-
-# Refer to the Caddy docs for more information:
-# https://caddyserver.com/docs/caddyfile
