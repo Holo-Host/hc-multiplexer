@@ -770,8 +770,11 @@ const doSend = (res: Response, body: string, code?: string) => {
         }
 
         .install-instructions {
+          padding: 20px;
+          overflow: auto;
           margin: 0 auto;
-          max-width: 720px;
+          max-width: 75%;
+          max-height: 90%;
         }
     
     
