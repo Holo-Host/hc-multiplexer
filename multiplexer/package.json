@@ -11,7 +11,7 @@
     "dweb:gen": "hc s clean && echo \"pass\" | hc s -f=12345,12346 --piped generate $(sed -n 's/^HAPP_PATH=\"\\(.*\\)\"/\\1/p' .env) -n 2 -a emergence network mdns",
     "dweb:start": "LAIR_PATH=`which lair-keystore` echo \"pass\" | hc s -f=12345,12346 --piped run 0 1 -p 30030,30031",
     "dweb:restart": "LAIR_PATH=`which lair-keystore` echo \"pass\" | hc s -f=12345,12346 --piped run 0 1",
-    "dweb:gen4": "hc s clean && echo \"pass\" | hc s -f=12345,12346 --piped generate $(sed -n 's/^HAPP_PATH=\"\\(.*\\)\"/\\1/p' .env) -n 4 -a emergence network mdns",
+    "dweb:gen4": "hc s clean && echo \"pass\" | hc s -f=12345,12346,12347,12348 --piped generate $(sed -n 's/^HAPP_PATH=\"\\(.*\\)\"/\\1/p' .env) -n 4 -a emergence network mdns",
     "dweb:start4": "LAIR_PATH=`which lair-keystore` echo \"pass\" | hc s -f=12345,12346,12347,12348 --piped run 0 1 2 3 -p 30030,30031,30032,30033",
     "dweb:restart4": "LAIR_PATH=`which lair-keystore` echo \"pass\" | hc s -f=12345,12346,12347,12348 --piped run 0 1 2 3",
     "start:hc": "echo \"starting holochain\" && RUST_LOG=warn echo \"pass\" | hc s -f=12345,12346 --piped generate $(sed -n 's/^HAPP_PATH=\"\\(.*\\)\"/\\1/p' .env) -n 2 --run=30030,30031 -a emergence network mdns",
