@@ -484,7 +484,8 @@ const redirecting = (regkey: string, req: Request, res: Response): number => {
   const origin = req.headers.origin;
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
-    const found = origin.match(/([^\.]*)([0-9]+)(\.[a-z]+\.*)/);
+    const found = origin.match(/([^\.]*)([0-9]+)(\.[a-z\.]+\.*)/);
+    console.log("FOUND",found,hostForRegkey)
     if (found && parseInt(found[2]) != hostForRegkey) {
       const target = `${found[1]}${hostForRegkey}${found[3]}/regkey/${regkey}`;
       console.log("REDIRECTING TO ", target);
