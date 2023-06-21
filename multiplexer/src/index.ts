@@ -478,23 +478,51 @@ app.get("/install", async (req: Request, res: Response) => {
     res,
     `
     <div class="card install-instructions">
-      <h3>Launcher Install Instructions:</h3>
-      <ol style="text-align: left">
-      <li>
-      Download the the <a href="https://drive.switch.ch/index.php/s/UH1kPtKF6nECyAy">Launcher for your platfrom</a>
-      </li>
-      <li>
-      Download the <a href="emergence.webhapp">Emergence webhapp file</a>
-      </li>
-      <li>
-      Open the launcher and click on "App Store," then "Select app from Filesystem" and choose the file you downloaded from step 2.
-      </li>
-      ${network_seed}
-      <li>
-      Enjoy!
-      </li>
-      </ol>
-    </div>
+    <h2>Install and Run Holochain Launcher:</h2>
+    
+    <p>To run Holochain and the Emergence App locally on your laptop or computer...</p>
+      
+    <h3>Installation</h3>
+
+    <h4>For Mac</h4>
+
+    <p><a href="launcher.mac"">DOWNLOAD</a> <-- Download and open this file. Then click on the round Holochain icon to run the launcher. You can choose to drag it into your Applications folder or not for easy finding later.</p>
+
+    <h4>For Windows</h4>
+
+    <p><a href="launcher.windows"">DOWNLOAD</a> <-- Download and run this installer. Windows will ask you to approve installing this software from the Holochain Foundation. Also, you might need to approve its traffic over your network firewall too.</p>
+
+    <h4>For Linux</h4>
+
+    <p><a href="launcher.linux"">DOWNLOAD</a> <-- You can download and execute this AppImage file. And put it in a place you can find it to run again later.</p>
+
+    <h3>Execution</h3>
+
+    <ol>
+    <li>Once you've run the launcher, you'll need to create a password, and then confirm it. We cannot reset this password for you, so please remember it.</li>
+
+    <li>Then you will want to install EMERGENCE as your first app. Go to the App Store tab, if you just installed, it may still be synchronizing data and take some moments for any apps to appear. But soon, you should find the Emergence app on the list and can click to install it. And then just accept the default settings on the next screen.</li>
+
+    <li>You can open the Emergence app from the launcher tab by clicking its icon.</li>
+
+    <li>The first time you open it, it has a lot of data in the schedule to synchronize, so it may take a while to gossip with other nodes to get itself updated. (For advanced users, you can go back to the launcher window, click on the settings wheel in the upper right corner. Then you can click on the three dots to open up the details about your app, and see what gossip is happwning with other agents)</li>
+
+    <li>Now the schedule should be visible, and you can submit emergent sessions for TOMORROW.</li>
+    </ol>
+
+    <h3>Submitting Sessions</h3>
+
+    <ol>
+    <li>On the sessions tab inside the app window, you can click on the create button.</li>
+    <li>The Title and Description are required. </li>
+    <li>You can add tags and other leaders...</li>
+    <li>Please note any required amenities... </li>
+    <li>Finally, you can choose a time and place for your session.</li>
+    </ol>
+
+    <b>Other questions??</b>
+
+    <p>Visit the Help desk at the Wagon Wheel...</p>
 `
   );
 });
