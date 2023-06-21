@@ -98,7 +98,7 @@ const instanceForRegKey = (regkey: string): number => {
 };
 
 const conductorForRegKey = (regkey: string): number => {
-  return (Buffer.from(regkey)[0] % CONDUCTOR_COUNT);
+  return (Buffer.from(regkey)[1] % CONDUCTOR_COUNT);
 };
 
 const lairBin = process.env.LAIR_PATH
