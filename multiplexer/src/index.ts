@@ -555,7 +555,7 @@ Agent: ${encodeHashToBase64(cellId[1])}`;
     doError(res, e);
     return;
   }
-});redirecting
+});
 
 app.get("/", [
   async (req: Request, res: Response, next: NextFunction) => {
