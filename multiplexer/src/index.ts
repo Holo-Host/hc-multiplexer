@@ -485,7 +485,6 @@ const redirecting = (regkey: string, req: Request, res: Response): number => {
   if (!origin) {
     origin = `https://${req.headers.host}`;
   }
-  console.log("req.header", req.headers)
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
     const found = origin.match(/([^\.]*)([0-9]+)(\.[a-z\.]+\.*)/);
