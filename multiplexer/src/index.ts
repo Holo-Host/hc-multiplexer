@@ -483,6 +483,7 @@ app.get("/regkey/:key", async (req: Request, res: Response) => {
 
 const redirecting = (regkey: string, req: Request, res: Response): number => {
   const origin = req.headers.origin;
+  console.log("req.header", req.headers)
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
     const found = origin.match(/([^\.]*)([0-9]+)(\.[a-z\.]+\.*)/);
