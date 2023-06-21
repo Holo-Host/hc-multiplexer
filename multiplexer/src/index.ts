@@ -95,7 +95,7 @@ const instanceForRegKey = (regkey: string): number => {
 };
 
 const conductorForRegKey = (regkey: string): number => {
-  return (Buffer.from(regkey)[1] % CONDUCTOR_COUNT);
+  return (Buffer.from(regkey)[0] % CONDUCTOR_COUNT);
 };
 
 const lairBin = process.env.LAIR_PATH
@@ -553,7 +553,7 @@ app.get("/", [
 <script>
 document.getElementById("regkey").addEventListener("input", (e)=>{
   const button = document.getElementById("submit")
-  if (!e.target.value || e.target.value.length <2) {
+  if (!e.target.value || e.target.value.length <1) {
     button.disabled = true
     button.classList.add("disabled")
   } else {
