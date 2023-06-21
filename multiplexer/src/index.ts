@@ -482,7 +482,10 @@ app.get("/regkey/:key", async (req: Request, res: Response) => {
 });
 
 const redirecting = (regkey: string, req: Request, res: Response): number => {
-  const origin = req.headers.origin;
+  let origin = req.headers.origin;
+  if (!origin) {
+    origin = req.headers.host;
+  }
   console.log("req.header", req.headers)
   if (origin) {
     const hostForRegkey = instanceForRegKey(regkey);
