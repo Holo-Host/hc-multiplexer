@@ -63,6 +63,9 @@ const HAPP_PATH = process.env.HAPP_PATH || "";
 const WEBHAPP_PATH = process.env.WEBHAPP_PATH || "";
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH || "";
 const NETWORK_SEED = process.env.NETWORK_SEED || "";
+const MAC_PATH = process.env.MAC_PATH || "";
+const LINUX_PATH = process.env.LINUX_PATH || "";
+const WINDOWS_PATH = process.env.WINDOWS_PATH || "";
 
 const INSTANCE_COUNT = parseInt(
   process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1"
@@ -449,6 +452,16 @@ const redirecting = (regkey: string, req: Request, res: Response): number => {
   }
   return conductorForRegKey(regkey);
 };
+app.get("/launcher.mac", async (req: Request, res: Response) => {
+  res.sendFile(MAC_PATH);
+});
+app.get("/launcher.linux", async (req: Request, res: Response) => {
+  res.sendFile(LINUX_PATH);
+});
+app.get("/launcher.windows", async (req: Request, res: Response) => {
+  res.sendFile(WINDOWS_PATH);
+});
+
 app.get("/emergence.webhapp", async (req: Request, res: Response) => {
   res.sendFile(WEBHAPP_PATH);
 });
@@ -467,7 +480,7 @@ app.get("/install", async (req: Request, res: Response) => {
       <h3>Launcher Install Instructions:</h3>
       <ol style="text-align: left">
       <li>
-      Download the the <a href="https://drive.switch.ch/index.php/s/UH1kPtKF6nECyAy">Launcher for your platfrom</a>
+      Download the the <a href="/launcher.linux">Launcher for your platfrom</a>
       </li>
       <li>
       Download the <a href="emergence.webhapp">Emergence webhapp file</a>
