@@ -81,12 +81,12 @@ const APP_PORT_FOR_INTERFACE: number = parseInt(
   process.env.APP_PORT_FOR_INTERFACE || "3030"
 );
 
-const getHcAdminPortsFromEnv = (): Array<string> => {
+const getHcAdminPortsFromEnv = (): Array<string>|undefined => {
   var env = process.env.HC_ADMIN_PORTS;
   if (env) {
     return env.split(",");
   } else {
-    return [];
+    return undefined;
   }
 };
 
@@ -105,7 +105,7 @@ const getHcAdminPortsFromDotHc = (): Array<string> => {
 };
 
 const HC_ADMIN_PORTS: Array<number> = (
-  getHcAdminPortsFromEnv() || getHcAdminPortsFromDotHc
+  getHcAdminPortsFromEnv() || getHcAdminPortsFromDotHc()
 ).map((s) => parseInt(s));
 
 const instanceForRegKey = (regkey: string): number => {
