@@ -546,15 +546,15 @@ app.get("/install", async (req: Request, res: Response) => {
 
     <h4>For Mac</h4>
 
-    <p><a href="launcher.mac"">DOWNLOAD</a> <-- Download and open this file. Then click on the round Holochain icon to run the launcher. You can choose to drag it into your Applications folder or not for easy finding later.</p>
+    <p><a href="https://emerge1.d.dweb.city/launcher.mac"">DOWNLOAD</a> <-- Download and open this file. Then click on the round Holochain icon to run the launcher. You can choose to drag it into your Applications folder or not for easy finding later.</p>
 
     <h4>For Windows</h4>
 
-    <p><a href="launcher.windows"">DOWNLOAD</a> <-- Download and run this installer. Windows will ask you to approve installing this software from the Holochain Foundation. Also, you might need to approve its traffic over your network firewall too.</p>
+    <p><a href="https://emerge1.d.dweb.city/launcher.windows"">DOWNLOAD</a> <-- Download and run this installer. Windows will ask you to approve installing this software from the Holochain Foundation. Also, you might need to approve its traffic over your network firewall too.</p>
 
     <h4>For Linux</h4>
 
-    <p><a href="launcher.linux"">DOWNLOAD</a> <-- You can download and execute this AppImage file. And put it in a place you can find it to run again later.</p>
+    <p><a href="https://emerge1.d.dweb.city/launcher.linux"">DOWNLOAD</a> <-- You can download and execute this AppImage file. And put it in a place you can find it to run again later.</p>
 
     <h3>Execution</h3>
 
