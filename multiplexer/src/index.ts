@@ -67,10 +67,11 @@ const MAC_PATH = process.env.MAC_PATH || "";
 const LINUX_PATH = process.env.LINUX_PATH || "";
 const WINDOWS_PATH = process.env.WINDOWS_PATH || "";
 
-const INSTANCE_COUNT = parseInt(
+let INSTANCE_COUNT = parseInt(
   process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1"
 );
 console.log("INSTANCE_COUNT", INSTANCE_COUNT)
+INSTANCE_COUNT=2
 const CONDUCTOR_COUNT = parseInt(
   process.env.CONDUCTOR_COUNT ? process.env.CONDUCTOR_COUNT : "1"
 );
