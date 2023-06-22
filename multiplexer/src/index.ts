@@ -62,11 +62,12 @@ const HAPP_UI_PATH = process.env.HAPP_UI_PATH || "./";
 const HAPP_PATH = process.env.HAPP_PATH || "";
 const WEBHAPP_PATH = process.env.WEBHAPP_PATH || "";
 const LAIR_CLI_PATH = process.env.LAIR_CLI_PATH || "";
-const NETWORK_SEED = process.env.NETWORK_SEED || "";
+let NETWORK_SEED = process.env.NETWORK_SEED || "";
 const MAC_PATH = process.env.MAC_PATH || "";
 const LINUX_PATH = process.env.LINUX_PATH || "";
 const WINDOWS_PATH = process.env.WINDOWS_PATH || "";
 
+NETWORK_SEED = "play"
 let INSTANCE_COUNT = parseInt(
   process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1"
 );
