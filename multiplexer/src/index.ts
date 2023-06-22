@@ -77,7 +77,7 @@ console.log("INSTANCE_COUNT", INSTANCE_COUNT)
 let CONDUCTOR_COUNT = parseInt(
   process.env.CONDUCTOR_COUNT ? process.env.CONDUCTOR_COUNT : "1"
 );
-CONDUCTOR_COUNT=4
+CONDUCTOR_COUNT=6
 console.log("CONDUCTOR_COUNT", CONDUCTOR_COUNT)
 const APP_PATH_FOR_CLIENT = process.env.APP_PATH_FOR_CLIENT || "appWebsocket";
 const REAL_APP_PORT_FOR_INTERFACE: number = parseInt(
