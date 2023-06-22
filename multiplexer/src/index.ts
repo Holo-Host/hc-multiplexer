@@ -108,12 +108,21 @@ const HC_ADMIN_PORTS: Array<number> = (
   getHcAdminPortsFromEnv() || getHcAdminPortsFromDotHc()
 ).map((s) => parseInt(s));
 
+const makeHash = (txt: string ) : Uint8Array => {
+  const interim = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  
+  const hash = blake2b(interim.length).update(Buffer.from(txt)).digest("binary");
+  return hash
+}
+
 const instanceForRegKey = (regkey: string): number => {
-  return (Buffer.from(regkey)[0] % INSTANCE_COUNT) + 1;
+  const hash = makeHash(regkey)
+  return (hash[0] % INSTANCE_COUNT) + 1;
 };
 
 const conductorForRegKey = (regkey: string): number => {
-  return Buffer.from(regkey)[0] % CONDUCTOR_COUNT;
+  const hash = makeHash(regkey)
+  return hash[1] % CONDUCTOR_COUNT;
 };
 
 const lairBin = process.env.LAIR_PATH;
@@ -635,9 +644,9 @@ app.get("/", [
     </div>
     <div class="block">
       <div class="card">
-          <span class="cta-prompt">Enter your registration key to get started</span>
+          <span class="cta-prompt">Enter your unikey (a unique word or sentence that you will remember)</span>
           <form action="/regkey/" method="post">
-            <input id="regkey" placeholder="e.g. 5XyWW1Qt6" class="regkey input" type="input" name="key" autofocus></input>
+            <input id="regkey" placeholder="e.g. purple friend berry" class="regkey input" type="input" name="key" autofocus></input>
             <input disabled id="submit" class="submit-button disabled" type="submit" name="submit" value="Next: Set your password"></input>
           </form>
           <img class="pwrd-by" src="/images/powered_by_holochain.png" />
@@ -647,7 +656,7 @@ app.get("/", [
 <script>
 document.getElementById("regkey").addEventListener("input", (e)=>{
   const button = document.getElementById("submit")
-  if (!e.target.value) {
+  if (!e.target.value || e.target.length <= 5) {
     button.disabled = true
     button.classList.add("disabled")
   } else {
