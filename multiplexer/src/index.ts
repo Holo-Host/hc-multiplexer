@@ -71,8 +71,9 @@ NETWORK_SEED = "play"
 let INSTANCE_COUNT = parseInt(
   process.env.INSTANCE_COUNT ? process.env.INSTANCE_COUNT : "1"
 );
-console.log("INSTANCE_COUNT", INSTANCE_COUNT)
+console.log("NETWORK_SEED", NETWORK_SEED)
 INSTANCE_COUNT=2
+console.log("INSTANCE_COUNT", INSTANCE_COUNT)
 const CONDUCTOR_COUNT = parseInt(
   process.env.CONDUCTOR_COUNT ? process.env.CONDUCTOR_COUNT : "1"
 );
