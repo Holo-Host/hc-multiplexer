@@ -145,8 +145,7 @@ const getLairRootFromEnv = (conductor: number): string => {
 const getLairSocket = (conductor: number) => {
   const lairRoot =
     getLairRootFromEnv(conductor) || lairWorkdirPathFromDotHC(conductor);
-
-  // prefer getting the url from lair-keystore directly
+    // prefer getting the url from lair-keystore directly
   if (lairBin && lairRoot) {
     const cmd = `${lairBin} --lair-root ${lairRoot} url`;
 
