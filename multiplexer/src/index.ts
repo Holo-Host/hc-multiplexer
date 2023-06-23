@@ -634,7 +634,7 @@ app.get("/", [
         res,
         `
   <div class="container">
-    <div class="block">
+    <div class="block text">
         <span>DWeb Camp 2023</span>
         <h3>Discovering Flows</h3>
         <div> Welcome. Flows are everywhere, but most of us don’t perceive them. Discovering flow means tapping into the most powerful forces around us:
@@ -786,7 +786,6 @@ const doSend = (res: Response, body: string, code?: string) => {
     
         .container {
           letter-spacing: -.008rem;
-          display: flex; flex-direction: column;
           text-align: left;
           padding-top: 50px;
           margin: 0 auto;
@@ -839,10 +838,15 @@ const doSend = (res: Response, body: string, code?: string) => {
           max-height: 90%;
         }
     
+        .password-set {
+          margin-top: 20px;
+        }
     
         @media (min-width: 720px) {
           .container {
             flex-direction: row;
+            display: flex;
+            justify-content: center;
             align-items: center;
             max-width: 960px;
           }
@@ -867,8 +871,12 @@ const doSend = (res: Response, body: string, code?: string) => {
           }
         }
 
+        .block.text {
+           margin-bottom:
+        }
+
     
-        @media (min-width: 720px) and (min-height: 500px) {
+        @media (min-width: 720px) and (max-width: 500px) {
           .app-info {
             display: flex;
             align-items: center;
@@ -878,6 +886,7 @@ const doSend = (res: Response, body: string, code?: string) => {
           }
         }
       </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body style="background-image: url(/images/dweb-background.jpg);    background-size: cover;"    >
       <div class="app-info">
