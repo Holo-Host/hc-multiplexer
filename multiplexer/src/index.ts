@@ -648,7 +648,7 @@ app.get("/", [
       <div class="card">
           <span class="cta-prompt">Enter your unikey (a unique word or sentence that you will remember)</span>
           <form action="/regkey/" method="post">
-            <input id="regkey" placeholder="e.g. purple friend berry" class="regkey input" type="input" name="key" autofocus></input>
+            <input id="regkey" placeholder="e.g. purple friend berry" class="regkey input" type="input" name="key" autofocus autocapitalize="none" autocomplete="off"></input>
             <input disabled id="submit" class="submit-button disabled" type="submit" name="submit" value="Next: Set your password"></input>
           </form>
           <img class="pwrd-by" src="/images/powered_by_holochain.png" />
